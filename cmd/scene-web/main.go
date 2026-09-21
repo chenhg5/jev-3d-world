@@ -16,7 +16,9 @@ import (
 )
 
 type composeRequest struct {
-	Prompt string `json:"prompt"`
+	Prompt  string      `json:"prompt"`
+	Mode    string      `json:"mode"`
+	Current *scene.Spec `json:"current,omitempty"`
 }
 
 type composeResponse struct {
@@ -62,7 +64,23 @@ func main() {
 		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 		defer cancel()
 		started := time.Now()
-		spec, err := composer.Compose(ctx, input.Prompt)
+		if input.Mode != "" && input.Mode != "replace" && input.Mode != "append" {
+			writeError(w, http.StatusBadRequest, "unsupported composition mode")
+			return
+		}
+		if input.Mode == "append" {
+			if err := scene.ValidateCurrent(input.Current); err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+		var spec scene.Spec
+		var err error
+		if input.Mode == "append" {
+			spec, err = composer.ComposeAddition(ctx, input.Prompt, *input.Current)
+		} else {
+			spec, err = composer.Compose(ctx, input.Prompt)
+		}
 		if err != nil {
 			status := http.StatusBadGateway
 			if errors.Is(err, context.DeadlineExceeded) {

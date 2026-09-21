@@ -12,6 +12,24 @@ export function skyColor(spec) {
   }[spec.lighting] ?? 0x9fcde5;
 }
 
+export function createSky(spec) {
+  const horizon=new THREE.Color(skyColor(spec));
+  const top=new THREE.Color(({day:0x457caa,sunset:0x627d99,night:0x080e22,overcast:0x8499ae,neon:0x100922})[spec.lighting]??0x457caa);
+  const material=new THREE.ShaderMaterial({
+    side:THREE.BackSide,depthWrite:false,
+    uniforms:{top:{value:top},horizon:{value:horizon}},
+    vertexShader:'varying vec3 direction; void main(){ direction=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+    fragmentShader:`uniform vec3 top; uniform vec3 horizon; varying vec3 direction;
+      void main(){ float h=normalize(direction).y; gl_FragColor=vec4(mix(horizon,top,smoothstep(-.02,.65,h)),1.);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+      }`,
+  });
+  const sky=new THREE.Mesh(new THREE.SphereGeometry(450,32,16),material);
+  sky.name="sky-dome";sky.renderOrder=-10;
+  return sky;
+}
+
 export function createMoon(phase) {
   if (!["full", "crescent"].includes(phase)) return null;
   const group = new THREE.Group();

@@ -22,7 +22,7 @@
   },
   {
     "type": "tree",
-    "description": "ONLY generic unspecified trees / 普通树 / 未指定种类的树. EXCLUDE all explicitly named cherry, willow, palm, pine, bamboo: those have separate assets. '三棵樱花树' means ZERO generic trees, three cherry. 'five trees' means five generic trees.",
+    "description": "Generic trees / 普通树 / 未指定种类的树. A requested forest or woodland / 森林 / 山林 includes generic trees even without separately listing them. EXCLUDE explicitly named cherry, willow, palm, pine, bamboo: those have separate assets. Never add generic trees as duplicates of a named species.",
     "label": "普通树",
     "group": "flora",
     "height": 3.4
@@ -57,10 +57,10 @@
   },
   {
     "type": "pond",
-    "description": "A small reflective pond as a tranquil landscape feature.",
+    "description": "A pond, lake or lakeside water feature / 池塘 / 湖泊 / 湖畔. A lakeside scene explicitly requires one water body even if described only as 'lakeside'. Size is selected separately.",
     "label": "池塘",
     "group": "water",
-    "height": 0.1
+    "height": 0.45
   },
   {
     "type": "crystal",

@@ -1,8 +1,14 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { SSAOPass } from "three/addons/postprocessing/SSAOPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { createAsset, material, mesh, assetDefinition, catalog } from "./models.js";
-import { planLayout, intersects } from "./layout.js";
-import { skyColor, createMoon, positionMoon, faceMoon } from "./sky.js";
+import { planLayout, appendLayout } from "./layout.js";
+import { createLandscape, objectElevation, refreshPaths } from "./landscape.js";
+import { skyColor, createSky, createMoon, positionMoon, faceMoon } from "./sky.js";
+import { createSceneEditor } from "./editing.js";
 import "./style.css";
 
 const host = document.querySelector("#canvas-host");
@@ -26,6 +32,14 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 host.appendChild(renderer.domElement);
+const effects = new EffectComposer(renderer);
+effects.addPass(new RenderPass(scene,camera));
+const contactShadows = new SSAOPass(scene,camera,1,1,12);
+contactShadows.kernelRadius = .65;
+contactShadows.minDistance = .0002;
+contactShadows.maxDistance = .018;
+effects.addPass(contactShadows);
+effects.addPass(new OutputPass());
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -40,7 +54,42 @@ let animated = [];
 let assetBounds = new THREE.Box3();
 let previewMode = false;
 let skyMoon = null;
+let landscape = null;
+let currentSpec = null;
+let currentLayout = null;
+let waterTimes = [];
+let composeMode = "replace";
 scene.add(world);
+
+const editor = createSceneEditor({
+  canvas: renderer.domElement, camera, controls, scene,
+  panel: document.querySelector("#selection-panel"),
+  label: document.querySelector("#selected-name"),
+  reset: document.querySelector("#reset-position"),
+  dismiss: document.querySelector("#deselect-object"),
+  scaleInput: document.querySelector("#object-scale"),
+  rotationInput: document.querySelector("#object-rotation"),
+  onSelect(item) { host.dataset.selectedAsset = item?.model.name || ""; },
+  onChange: updateSceneAfterEdit,
+});
+
+function updateSceneAfterEdit() {
+    if (!currentLayout || !landscape) return;
+    refreshPaths(landscape, currentLayout, currentSpec);
+    host.dataset.pathCount = landscape.paths.length;
+    updateLayoutData();
+    assetBounds.makeEmpty();
+    for (const item of currentLayout.items) assetBounds.union(new THREE.Box3().setFromObject(item.model));
+    if (skyMoon) {
+      const diameter = skyMoon.scale.x * 2.8;
+      assetBounds.union(new THREE.Box3().setFromCenterAndSize(skyMoon.position, new THREE.Vector3(diameter, diameter, diameter)));
+    }
+}
+
+function updateLayoutData() {
+  host.dataset.layout = JSON.stringify(currentLayout.items.map(({type,x,z,width,depth,height,model,editScale})=>
+    ({id:model.name,type,x,z,width,depth,height,rotation:model.rotation.y,scale:editScale??1})));
+}
 
 const paletteMap = {
   natural: { fabric: 0xd7b982, wood: 0x6d4930, leaf: 0x315f42, accent: 0xffa84c, stone: 0x737772 },
@@ -82,9 +131,12 @@ function seededRandom(seedText) {
 
 
 function disposeWorld() {
+  editor.clear();
+  currentLayout = null;
   scene.remove(world);
   world.traverse((child) => {
     if (child.isLight && child.dispose) child.dispose();
+    if (child.isInstancedMesh) child.dispose();
     if (child.geometry) child.geometry.dispose();
     if (child.material) {
       const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -94,14 +146,16 @@ function disposeWorld() {
   world = new THREE.Group();
   animated = [];
   skyMoon = null;
+  landscape = null;
+  waterTimes = [];
   scene.add(world);
 }
 
 function addLighting(kind) {
   const settings = {
-    day: { hemiSky: 0xd9efff, hemiGround: 0x455940, intensity: 2.1, sun: 0xfff4d6, sunIntensity: 4.2, pos: [5, 9, 4], exposure: 1.05 },
-    sunset: { hemiSky: 0xffc69d, hemiGround: 0x3b3552, intensity: 1.7, sun: 0xff9a55, sunIntensity: 5.4, pos: [-7, 5, 2], exposure: 1.12 },
-    night: { hemiSky: 0x617ac2, hemiGround: 0x141827, intensity: 0.8, sun: 0x9cbcff, sunIntensity: 2.2, pos: [-4, 8, -4], exposure: 0.84 },
+    day: { hemiSky: 0xd9efff, hemiGround: 0x455940, intensity: 2.1, sun: 0xfff4d6, sunIntensity: 3.2, pos: [5, 9, 4], exposure: 1.05 },
+    sunset: { hemiSky: 0xd4e5ef, hemiGround: 0x72715c, intensity: 1.9, sun: 0xffd29a, sunIntensity: 2.8, pos: [-7, 5, 2], exposure: 1.05 },
+    night: { hemiSky: 0x617ac2, hemiGround: 0x141827, intensity: 1.3, sun: 0x9cbcff, sunIntensity: 2.2, pos: [-4, 8, -4], exposure: 0.84 },
     overcast: { hemiSky: 0xd8e0e2, hemiGround: 0x53605b, intensity: 2.2, sun: 0xe8eeee, sunIntensity: 2.3, pos: [2, 8, 4], exposure: 0.96 },
     neon: { hemiSky: 0x2c4665, hemiGround: 0x170e24, intensity: 0.75, sun: 0x45f5e7, sunIntensity: 2.5, pos: [5, 6, 1], exposure: 0.9 },
   }[kind];
@@ -112,7 +166,8 @@ function addLighting(kind) {
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 0.035;
+  sun.shadow.normalBias = 0.02;
+  sun.shadow.radius = 3;
   sun.shadow.camera.left = -12;
   sun.shadow.camera.right = 12;
   sun.shadow.camera.top = 12;
@@ -160,8 +215,8 @@ function addAtmosphere(kind, colors, random) {
 
 function applyCamera(kind, random) {
   const positions = {
-    isometric: [6, 12, 19],
-    cinematic: [13, 4.2, 12],
+    isometric: [6, 15, 19],
+    cinematic: [4, 4.8, 20],
     top_down: [0.1, 18, 0.1],
     eye_level: [12, 2.8, 10],
   };
@@ -200,89 +255,51 @@ function fitAssets() {
         const delta = new THREE.Vector3(x, y, z).sub(target);
         distance = Math.max(distance, delta.dot(direction) + Math.max(
           Math.abs(delta.dot(right)) / tanH, Math.abs(delta.dot(up)) / tanV,
-        ) * 1.23);
+        ) * 1.12);
       }
   camera.position.copy(target).addScaledVector(direction, distance);
-  camera.far = Math.max(160, distance + 100);
+  camera.far = Math.max(600, distance + 350);
+  controls.maxDistance = Math.max(150, distance * 2);
   camera.updateProjectionMatrix();
-  if (scene.fog) { scene.fog.near = distance + 12; scene.fog.far = distance + 100; }
+  if (scene.fog) { scene.fog.near = distance + 15; scene.fog.far = distance + 180; }
 }
 
-function addSea(random) {
-  const water = mesh(new THREE.CircleGeometry(220, 96), material(0x247c9e, { roughness: 0.28, metalness: 0.24 }), 0, -0.14, 0);
-  water.rotation.x = -Math.PI / 2; water.castShadow = false; world.add(water);
-  const vertices = [];
-  for (let i = 0; i < 180; i++) {
-    const x = (random() - 0.5) * 55, z = (random() - 0.5) * 55;
-    if (Math.hypot(x, z) < 11.7) continue;
-    vertices.push(x, -0.1, z, x + 0.3 + random() * 1.2, -0.1, z);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-  world.add(new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0x9ddddd, transparent: true, opacity: 0.45 })));
-}
-
-function addLandscapeBase(spec, layout, environment, random) {
-  const radius=layout.landRadius;
-  if(spec.preview && spec.environment === "ocean") return;
-  const side=mesh(new THREE.CylinderGeometry(radius,radius*.99,.65,80),material(
-    new THREE.Color(environment.ground).multiplyScalar(.65).getHex()),0,-.39,0);
-  side.castShadow=false;world.add(side);
-  if(spec.terrain==="terraced"){
-    const step=mesh(new THREE.CylinderGeometry(radius*1.04,radius*1.07,.25,80),
-      material(new THREE.Color(environment.ground).multiplyScalar(.8).getHex()),0,-.72,0);
-    step.castShadow=false;world.add(step);
-  }
-  if(["rolling","cratered","islands"].includes(spec.terrain) && !spec.preview && spec.environment!=="city"){
-    for(let i=0;i<9;i++){
-      const angle=random()*Math.PI*2, r=radius*.86,x=Math.cos(angle)*r,z=Math.sin(angle)*r;
-      if(layout.items.some(item=>intersects({x,z,width:2.3,depth:2.3},item,.1)))continue;
-      let accent;
-      if(spec.terrain==="cratered"){
-        accent=mesh(new THREE.TorusGeometry(.65,.1,7,24),material(environment.ground),x,.02,z);
-        accent.rotation.x=Math.PI/2;accent.scale.z=.6;
-      }else{
-        accent=mesh(new THREE.SphereGeometry(1,12,8),material(environment.ground),x,-.03,z);
-        accent.scale.set(1.1,.18+random()*.25,.8);
+function prepareItems(spec, colors, random) {
+  const prepared = [];
+  for (const objectSpec of spec.objects) {
+    const definition = assetDefinition(objectSpec.type);
+    if (!definition) throw new Error("Unsupported asset: " + objectSpec.type);
+    for (let index = 0; index < objectSpec.count; index++) {
+      const model = createAsset(objectSpec.type, colors, random);
+      if (objectSpec.type === "pond" && spec.waterScale === "large") model.scale.set(1.8,1,1.8);
+      // Buildings share street alignment; people face the viewing side.
+      const facing = ["architecture","vehicle","decor","people"].includes(definition.group);
+      model.rotation.y = facing ? (random() - .5) * .18 : random() * Math.PI * 2;
+      const variation = ["architecture","flora","terrain"].includes(definition.group) ? .88 + random() * .24 : .96 + random() * .08;
+      model.scale.multiplyScalar(variation);
+      model.updateMatrixWorld(true);
+      const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+      if (["tent","chair"].includes(objectSpec.type) || definition.group === "people") {
+        const diameter = Math.hypot(size.x,size.z); size.x = diameter; size.z = diameter;
       }
-      world.add(accent);
+      prepared.push({ type: objectSpec.type, group: definition.group, model, index, count: objectSpec.count,
+        placement: objectSpec.placement, anchor: objectSpec.anchor, width:size.x, depth:size.z, height:size.y });
     }
   }
-  if(spec.environment==="city"){
-    const road=mesh(new THREE.BoxGeometry(radius*1.8,.035,2.5),material(0x394b51),0,.006,1);
-    road.castShadow=false;world.add(road);
-    for(let x=-radius*.85;x<radius*.85;x+=1.5){
-      const dash=mesh(new THREE.BoxGeometry(.65,.015,.055),material(0xd8d3ad),x,.03,1);
-      dash.castShadow=false;world.add(dash);
-    }
-  }else if(!["ocean","coast","moon","volcanic"].includes(spec.environment)){
-    for(let i=0;i<40;i++){
-      const a=random()*Math.PI*2,r=radius*(.72+random()*.2),x=Math.cos(a)*r,z=Math.sin(a)*r;
-      if(layout.items.some(item=>intersects({x,z,width:.3,depth:.3},item,.1)))continue;
-      const tuft=mesh(new THREE.ConeGeometry(.12,.22,4),material(0x729160),x,.08,z);
-      tuft.castShadow=false;world.add(tuft);
-    }
-  }
-  world.traverse(child=>{
-    if(child.isDirectionalLight){
-      child.shadow.camera.left=-radius-3; child.shadow.camera.right=radius+3;
-      child.shadow.camera.top=radius+3; child.shadow.camera.bottom=-radius-3;
-      child.position.set(-radius*.55,radius+9,radius*.65);
-      child.shadow.camera.far=radius*4+35;
-      child.shadow.camera.updateProjectionMatrix();
-    }
-  });
+  return prepared;
 }
 
 function renderScene(spec, promptText) {
   disposeWorld();
   previewMode = !!spec.preview;
+  currentSpec = spec;
   const random = seededRandom(promptText + "|" + (spec.variant ?? 0));
   const colors = paletteMap[spec.palette] || paletteMap.natural;
   const environment = environmentMap[spec.environment] || environmentMap.meadow;
   const coastal = spec.environment === "ocean" || spec.environment === "coast";
   const sky = skyColor(spec);
   scene.background = new THREE.Color(sky);
+  if(spec.environment !== "moon") world.add(createSky(spec));
   scene.fog = spec.atmosphere === "mist"
     ? new THREE.Fog(sky, 6, 20)
     : new THREE.Fog(sky, 15, 34);
@@ -291,56 +308,24 @@ function renderScene(spec, promptText) {
   host.dataset.moon = skyMoon ? spec.moon : "none";
   host.dataset.skyColor = scene.background.getHexString();
 
-  const ground = mesh(
-    new THREE.CircleGeometry(11.5, 64),
-    material(environment.ground, { roughness: 0.98 }),
-    0,
-    -0.05,
-    0,
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  ground.castShadow = false;
-  world.add(ground);
-  if (coastal) addSea(random);
-
-  const grid = new THREE.GridHelper(22, 22, 0xffffff, 0xffffff);
-  grid.position.y = 0.008;
-  grid.material.opacity = 0.035;
-  grid.material.transparent = true;
-  // The model preview uses a solid diorama base; no construction grid overlay.
-  grid.geometry.dispose(); grid.material.dispose();
-
   addLighting(spec.lighting);
   if ((spec.lighting === "night" || spec.lighting === "neon" || spec.environment === "moon") && spec.atmosphere !== "stars") {
     addStars(random);
   }
   addAtmosphere(spec.atmosphere || "clear", colors, random);
 
-  const prepared = [];
+  const prepared = prepareItems(spec, colors, random);
   assetBounds = new THREE.Box3();
   const renderedCounts = {};
-  for (const objectSpec of spec.objects) {
-    const definition = assetDefinition(objectSpec.type);
-    if (!definition) throw new Error("Unsupported asset: " + objectSpec.type);
-    for (let index = 0; index < objectSpec.count; index++) {
-      const model = createAsset(objectSpec.type, colors, random);
-      // Buildings share street alignment; people face the viewing side.
-      const facing = ["architecture","vehicle","decor","people"].includes(definition.group);
-      model.rotation.y = facing ? (random() - .5) * .18 : random() * Math.PI * 2;
-      const variation = ["architecture","flora","terrain"].includes(definition.group) ? .88 + random() * .24 : .96 + random() * .08;
-      model.scale.multiplyScalar(variation);
-      model.updateMatrixWorld(true);
-      const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
-      prepared.push({ type: objectSpec.type, group: definition.group, model, index, count: objectSpec.count,
-        placement: objectSpec.placement, width:size.x, depth:size.z, height:size.y });
-    }
-  }
   const layout = spec.preview ? {items:prepared.map(item=>({...item,x:0,z:0})),
     landRadius:Math.max(2.5,...prepared.map(item=>Math.max(item.width,item.depth)*.8))} : planLayout(prepared, spec, random);
+  currentLayout = layout;
+  landscape = createLandscape(spec, layout, environment.ground, random);
+  world.add(landscape.group);
   for (const item of layout.items) {
     const { model, type, x, z, index } = item;
-    model.position.set(x, 0, z);
+    model.position.set(x, objectElevation(item,spec,landscape.heightAt), z);
+    if (item.facing !== undefined) model.rotation.y = item.facing;
     model.name = type + "-" + index;
     world.add(model);
     model.updateMatrixWorld(true);
@@ -349,14 +334,24 @@ function renderScene(spec, promptText) {
     if (["boat","fishing_boat","ship","submarine","fish","lotus"].includes(type) && !coastal &&
         !layout.items.some(p => ["pond","river"].includes(p.type) && Math.hypot(p.x-x,p.z-z)<2)) {
       const pool = mesh(new THREE.CircleGeometry(Math.max(item.width,item.depth)*.72+.4,32),material(0x5a9fae),x,.015,z);
-      pool.rotation.x=-Math.PI/2;pool.castShadow=false;world.add(pool);
+      pool.rotation.x=-Math.PI/2;pool.castShadow=false;world.add(pool);item.pool=pool;
     }
   }
-  ground.scale.setScalar(layout.landRadius / 11.5);
-  ground.visible = !(spec.preview && coastal);
-  addLandscapeBase(spec, layout, environment, random);
+  world.traverse(child => {
+    if (child.isDirectionalLight) {
+      const radius = layout.landRadius + 8;
+      Object.assign(child.shadow.camera, {left:-radius,right:radius,top:radius,bottom:-radius,far:radius*5});
+      child.position.set(-radius*.6,radius*1.2,radius*.6);
+      child.shadow.camera.updateProjectionMatrix();
+    }
+    if (child.material?.userData.waterTime) waterTimes.push(child.material.userData.waterTime);
+  });
+  host.dataset.landscape = "continuous";
+  host.dataset.pathCount = landscape.paths.length;
   host.dataset.renderedCounts = JSON.stringify(renderedCounts);
-  host.dataset.layout = JSON.stringify(layout.items.map(({type,x,z,width,depth,height})=>({type,x,z,width,depth,height})));
+  updateLayoutData();
+  layout.items.forEach(item => { item.label = assetLabel(item.type) + " · " + (item.index + 1); });
+  editor.setItems(layout.items, spec, landscape.heightAt, landscape.extent);
   world.traverse((child) => {
     if (child.userData.flame || child.userData.float || child.userData.spin || child.userData.rotor) {
       child.userData.baseY = child.position.y;
@@ -394,11 +389,68 @@ function updateSummary(spec) {
   }
 }
 
+function appendScene(delta, promptText) {
+  if (!delta.objects.length) return 0;
+  const random = seededRandom(promptText + "|" + delta.variant);
+  const prepared = prepareItems({...currentSpec, objects:delta.objects}, paletteMap[currentSpec.palette] || paletteMap.natural, random);
+  let additions;
+  try {
+    additions = appendLayout(prepared, currentLayout, currentSpec, random);
+  } catch (error) {
+    for (const item of prepared) item.model.traverse(child => {
+      child.geometry?.dispose();
+      if (child.material) for (const mat of [child.material].flat()) mat.dispose();
+      if (child.isLight) child.dispose?.();
+    });
+    throw error;
+  }
+  const counts = JSON.parse(host.dataset.renderedCounts);
+  for (const item of additions) {
+    const {model,type,x,z}=item;
+    item.index=counts[type]??0;
+    counts[type]=(counts[type]??0)+1;
+    model.name=type+"-"+item.index;
+    item.label=assetLabel(type)+" · "+(item.index+1);
+    model.position.set(x,objectElevation(item,currentSpec,landscape.heightAt),z);
+    if (item.facing !== undefined) model.rotation.y=item.facing;
+    world.add(model);
+    model.traverse(child => {
+      if (child.material?.userData.waterTime) waterTimes.push(child.material.userData.waterTime);
+      if (child.userData.flame || child.userData.float || child.userData.spin || child.userData.rotor) {
+        child.userData.baseY=child.position.y; animated.push(child);
+      }
+    });
+  }
+  currentLayout.items.push(...additions);
+  currentSpec={...currentSpec,preview:false,objects:Object.entries(counts).map(([type,count])=>({type,count,placement:"auto"}))};
+  previewMode=false;
+  host.dataset.renderedCounts=JSON.stringify(counts);
+  editor.setItems(currentLayout.items,currentSpec,landscape.heightAt,landscape.extent);
+  updateSceneAfterEdit();
+  updateSummary(currentSpec);
+  fitAssets();
+  controls.update();
+  return additions.length;
+}
+
+function setComposeMode(mode) {
+  composeMode=mode;
+  document.querySelectorAll("[data-mode]").forEach(button => button.setAttribute("aria-pressed",String(button.dataset.mode===mode)));
+  document.querySelector("#mode-hint").textContent=mode==="append"
+    ? "Keep existing objects and edits. Describe only what to add."
+    : "Build a fresh world from your prompt.";
+  composeButton.querySelector("span").textContent=mode==="append"?"Add to scene":"Compose scene";
+  promptInput.placeholder=mode==="append"?"Add two cherry trees beside the pond and a bench in front of the tent…":"Describe a new world…";
+}
+document.querySelectorAll("[data-mode]").forEach(button => button.addEventListener("click",()=>setComposeMode(button.dataset.mode)));
+
 function setBusy(isBusy) {
+  editor.setEnabled(!isBusy);
   loading.hidden = !isBusy;
   composeButton.disabled = isBusy;
   promptInput.disabled = isBusy;
   document.querySelectorAll("[data-prompt]").forEach(button => { button.disabled = isBusy; });
+  document.querySelectorAll("[data-mode]").forEach(button => { button.disabled = isBusy; });
 }
 
 function setStatus(message, isError = false) {
@@ -408,25 +460,28 @@ function setStatus(message, isError = false) {
 
 async function compose(promptText) {
   if (composeButton.disabled) return;
+  const mode=composeMode;
   setBusy(true);
-  setStatus("Composing finite choices…");
+  setStatus(mode==="append"?"Choosing additions for the current scene…":"Composing finite choices…");
+  loading.querySelector("strong").textContent=mode==="append"?"Jev is choosing additions":"Jev is composing the scene";
   try {
     const response = await fetch("/api/compose", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: promptText }),
+      body: JSON.stringify({ prompt: promptText, mode, ...(mode==="append"?{current:currentSpec}:{}) }),
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "Scene composition failed");
-    renderScene(payload.scene, promptText);
+    const added=mode==="append"?appendScene(payload.scene,promptText):null;
+    if(mode!=="append")renderScene(payload.scene, promptText);
     const seconds = (payload.elapsedMs / 1000).toFixed(2);
     const confidence = Math.round(payload.scene.confidence * 100);
     setStatus(
-      seconds + " s · " + payload.scene.modelCalls + " Jev requests · " + payload.scene.inputTokens.toLocaleString() +
+      (mode==="append"?(added?"Added "+added+" objects · ":"No additions selected; existing scene kept · "):"") + seconds + " s · " + payload.scene.modelCalls + " Jev requests · " + payload.scene.inputTokens.toLocaleString() +
         " input tokens · " + confidence + "% confidence · variant " + payload.scene.variant +
-        (payload.scene.objects.length === 0 ? " · No assets selected; try naming a few objects" : ""),
+        (payload.scene.objects.length === 0 ? " · Try naming the objects to add" : ""),
     );
-    composeButton.querySelector("span").textContent = "Generate another";
+    composeButton.querySelector("span").textContent = mode==="append"?"Add more":"Generate another";
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Scene composition failed", true);
   } finally {
@@ -451,6 +506,7 @@ promptInput.addEventListener("keydown", (event) => {
 
 document.querySelectorAll("[data-prompt]").forEach((button) => {
   button.addEventListener("click", () => {
+    setComposeMode("replace");
     promptInput.value = button.dataset.prompt;
     form.requestSubmit();
   });
@@ -489,7 +545,7 @@ function updateCatalog(){
       renderScene({preview:true,variant:7,environment:item.group==="marine"?"ocean":"meadow",
         lighting:"day",camera:"isometric",composition:"central",palette:"natural",terrain:"open",atmosphere:"clear",
         objects:[{type:item.type,count:1,placement:"center"}]},item.type);
-      setStatus("Local asset preview · "+assetLabel(item.type)+" · Drag to orbit");
+      setStatus("Local asset preview · "+assetLabel(item.type)+" · Drag the object to move it");
       host.scrollIntoView({behavior:"smooth",block:"start"});
     });
     grid.append(button);
@@ -503,6 +559,7 @@ function resize() {
   const width = host.clientWidth;
   const height = host.clientHeight;
   renderer.setSize(width, height, false);
+  effects.setSize(width, height);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   fitAssets();
@@ -525,9 +582,11 @@ function animate(timestamp = performance.now()) {
     if (object.userData.spin) object.rotation.z -= 0.008;
     if (object.userData.rotor) object.rotation.y += 0.08;
   }
-  controls.update();
+  if (!editor.dragging) controls.update();
+  editor.update();
+  for (const time of waterTimes) time.value = elapsed;
   faceMoon(skyMoon, camera);
-  renderer.render(scene, camera);
+  effects.render();
   requestAnimationFrame(animate);
 }
 
@@ -535,20 +594,30 @@ const initialSpec = {
   variant: 1,
   environment: "meadow",
   lighting: "sunset",
-  camera: "isometric",
+  camera: "cinematic",
+  scenery: true,
   composition: "central",
   palette: "natural",
   terrain: "rolling",
   atmosphere: "clear",
   objects: [
-    { type: "tent", count: 2, placement: "left" },
+    { type: "tent", count: 3, placement: "auto" },
+    { type: "pond", count: 1, placement: "auto" },
+    { type: "chair", count: 3, placement: "auto" },
+    { type: "picnic_table", count: 1, placement: "auto" },
     { type: "campfire", count: 1, placement: "center" },
-    { type: "pine", count: 7, placement: "background" },
-    { type: "lantern", count: 2, placement: "around" },
+    { type: "pine", count: 9, placement: "auto" },
+    { type: "lantern", count: 3, placement: "auto" },
     { type: "rock", count: 3, placement: "scattered" },
   ],
 };
 
+document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => {
+  if (!currentSpec) return;
+  const kind = button.dataset.view === "reset" ? currentSpec.camera : button.dataset.view;
+  applyCamera(kind, seededRandom("camera"));
+  cameraLabel.textContent = kind.replace("_", " ").toUpperCase();
+}));
 resize();
 renderScene(initialSpec, "initial sunset camp");
 animate();

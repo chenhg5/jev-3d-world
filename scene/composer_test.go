@@ -29,6 +29,8 @@ func (fakeEvaluator) EvaluateChoices(
 	answers["environment"] = jevloop.ChoiceAnswer{Choice: "forest", Confidence: 0.9}
 	answers["scene_mode"] = jevloop.ChoiceAnswer{Choice: "inventory", Confidence: 0.9}
 	answers["moon_request"] = jevloop.ChoiceAnswer{Choice: "unspecified", Confidence: 0.9}
+	answers["scenery"] = jevloop.ChoiceAnswer{Choice: "minimal", Confidence: 0.9}
+	answers["water_scale"] = jevloop.ChoiceAnswer{Choice: "small", Confidence: 0.9}
 	answers["lighting"] = jevloop.ChoiceAnswer{Choice: "sunset", Confidence: 0.9}
 	answers["camera"] = jevloop.ChoiceAnswer{Choice: "isometric", Confidence: 0.9}
 	answers["composition"] = jevloop.ChoiceAnswer{Choice: "central", Confidence: 0.9}

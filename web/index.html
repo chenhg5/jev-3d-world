@@ -39,7 +39,37 @@
           <span>Choosing assets, mood, camera and spatial intent</span>
         </div>
 
-        <div class="scene-hint">Drag to orbit · Scroll to zoom</div>
+        <div class="view-controls" role="group" aria-label="Camera views">
+          <button type="button" data-view="cinematic">Landscape</button>
+          <button type="button" data-view="isometric">Overview</button>
+          <button type="button" data-view="reset">Reset view</button>
+        </div>
+        <div id="selection-panel" class="selection-panel" role="group" aria-label="Selected object controls" hidden>
+          <div class="selection-heading">
+            <strong id="selected-name" aria-live="polite"></strong>
+            <button type="button" id="reset-position" aria-label="Reset object" title="Reset object">↺</button>
+            <button type="button" id="deselect-object" aria-label="Deselect object" title="Deselect · Esc">×</button>
+          </div>
+          <div class="quick-transforms" role="group" aria-label="Size and rotation">
+            <button type="button" data-transform="shrink" aria-label="Make smaller" title="Smaller · hold to repeat">−</button>
+            <output id="quick-scale" aria-label="Object size">100%</output>
+            <button type="button" data-transform="grow" aria-label="Make larger" title="Larger · hold to repeat">+</button>
+            <span class="tool-divider" aria-hidden="true"></span>
+            <button type="button" data-transform="left" aria-label="Rotate left" title="Rotate left 15° · hold to repeat">↶</button>
+            <output id="quick-rotation" aria-label="Object rotation">0°</output>
+            <button type="button" data-transform="right" aria-label="Rotate right" title="Rotate right 15° · hold to repeat">↷</button>
+          </div>
+          <details class="fine-transforms">
+            <summary>Fine tune</summary>
+            <label class="transform-control" for="object-scale">Size
+              <input id="object-scale" type="range" min="25" max="400" step="5" value="100" /><output>100%</output>
+            </label>
+            <label class="transform-control" for="object-rotation">Rotation
+              <input id="object-rotation" type="range" min="0" max="359" step="1" value="0" /><output>0°</output>
+            </label>
+          </details>
+        </div>
+        <div class="scene-hint">Drag objects to move · Drag empty space to orbit · Scroll to explore</div>
       </section>
 
       <section class="composer" aria-labelledby="composer-title">
@@ -47,12 +77,13 @@
           <span class="eyebrow">FINITE ASSETS · COMBINATORIAL SCENES</span>
           <h1 id="composer-title">Describe a world. See it assembled.</h1>
           <p>
-            Jev selects from prepared geometry, lighting and layout choices.
-            Every run gets a fresh spatial variation—try the same prompt twice.
+            Connected places, open landscapes and a different world every time.
+            Describe the setting, the objects and how they belong together.
           </p>
         </div>
 
         <div class="prompt-presets" role="group" aria-label="Example prompts">
+          <button data-prompt="A secluded lakeside campsite in a mountain forest at golden hour, cozy tents facing a shared campfire, chairs around the fire and a picnic table beside the tents, cinematic landscape view.">Lakeside retreat</button>
           <button data-prompt="A cozy low-poly campsite at sunset, with two tents around a central campfire, pine trees in the background and warm lanterns.">Sunset camp</button>
           <button data-prompt="A mysterious moon landscape with one dark monolith, glowing cyan crystals scattered around it and two exploration robots.">Moon monolith</button>
           <button data-prompt="A peaceful snowy cabin scene at night, surrounded by pine trees, rocks and warm lanterns, viewed from an isometric angle.">Snow cabin</button>
@@ -66,6 +97,11 @@
           <button data-prompt="A seaside amusement park with one Ferris wheel, one swing, one slide, three beach umbrellas, two market stalls, four children and two palm trees, sunset, isometric view.">Seaside park</button>
         </div>
 
+        <div class="compose-modes" role="group" aria-label="Scene operation">
+          <button type="button" data-mode="replace" aria-pressed="true">New scene</button>
+          <button type="button" data-mode="append" aria-pressed="false">Add to scene</button>
+          <span id="mode-hint">Build a fresh world from your prompt.</span>
+        </div>
         <form id="prompt-form" class="prompt-box">
           <label for="prompt">Scene request</label>
           <textarea

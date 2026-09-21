@@ -26,6 +26,7 @@ type ObjectSpec struct {
 	Count      int     `json:"count"`
 	Placement  string  `json:"placement"`
 	Confidence float64 `json:"confidence"`
+	Anchor     string  `json:"anchor,omitempty"`
 }
 
 type Spec struct {
@@ -38,6 +39,8 @@ type Spec struct {
 	Terrain      string       `json:"terrain"`
 	Atmosphere   string       `json:"atmosphere"`
 	Moon         string       `json:"moon"`
+	Scenery      bool         `json:"scenery"`
+	WaterScale   string       `json:"waterScale"`
 	Objects      []ObjectSpec `json:"objects"`
 	Model        string       `json:"model"`
 	ModelCalls   int          `json:"modelCalls"`
@@ -62,6 +65,13 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		return Spec{}, fmt.Errorf("choice evaluator is required")
 	}
 	intent, err := c.Evaluator.EvaluateChoices(ctx, map[string]string{"request": request}, map[string]jevloop.ChoiceQuestion{
+		"scenery": {
+			Instructions: "May the scene include additional background woodland? Read `request`. Exact quantities of trees, 'only' inventories, explicit no-trees/no-forest constraints and empty scenes prohibit extra trees. Otherwise a forest / woods / woodland / 森林 / 山林 setting invites background woodland even when specific foreground props are listed.",
+			Criteria: map[string]string{
+				"natural": "Forest or woodland setting without an exact tree count or restriction; add background trees.",
+				"minimal": "Exact tree count, restricted inventory, exclusions, or no requested forest setting. Do not add background trees.",
+			},
+		},
 		"moon_request": {
 			Instructions: "Does `request` explicitly ask to SHOW or HIDE a moon in the sky? Extract the literal instruction, do NOT infer a moon from a holiday or atmosphere. '中秋节' and '中秋节，但是是白天' alone are unspecified. '白天也有月亮' explicitly requests a visible moon. A moon gate or a lunar surface is not a moon in the sky.",
 			Criteria: map[string]string{
@@ -92,7 +102,7 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 	}
 	questions := globalQuestions()
 	for _, item := range assets {
-		policy := "Explicit quantities must be exact (five=5, 五=5), capped at 20. Explicit plural without a number means 2 or 3, NEVER zero. If this type is absent/negated or only a different subtype is requested, choose 0."
+		policy := "If THIS asset type is absent, negated, or only a different subtype is requested, choose 0. Otherwise use the exact quantity attached to THIS type, capped at 20. Never copy a quantity from another object type. An explicitly requested plural of THIS type without a number means 2 or 3, never zero."
 		if mode == "theme" {
 			policy = "The user gave a broad theme, not a literal inventory. Infer a sparse recognizable scene. Include this asset ONLY if it is a defining element of that activity/place or basic natural scenery. Choose 1 for a focal object or 2–3 for repeated scenery. Choose 0 for optional accessories, unrelated objects, explicit exclusions and redundant subtypes. For unspecified people use person, not every age/gender subtype. For unspecified trees use tree, not every species."
 		} else if mode == "empty" {
@@ -138,6 +148,8 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		Terrain:      answer("terrain", true).Choice,
 		Atmosphere:   answer("atmosphere", true).Choice,
 		Moon:         answer("moon", false).Choice,
+		Scenery:      intent.Answers["scenery"].Choice == "natural",
+		WaterScale:   answer("water_scale", false).Choice,
 		Model:        result.Model,
 		ModelCalls:   modelCalls + 1,
 		InputTokens:  result.Usage.InputTokens + intent.Usage.InputTokens,
@@ -175,6 +187,10 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 
 func globalQuestions() map[string]jevloop.ChoiceQuestion {
 	return map[string]jevloop.ChoiceQuestion{
+		"water_scale": {
+			Instructions: "If a pond or lake is present, what water-body size fits `request`?",
+			Criteria:     map[string]string{"small": "Garden pond, small pool, or no stated lake.", "large": "Lake, lakeside retreat / 湖泊 / 湖畔: a broad body of water."},
+		},
 		"moon": {
 			Instructions: "What moon should be visible in the SKY of `request`? This is separate from ground objects and the lunar-surface environment. Honor explicit exclusions, indoor scenes and moonless skies. Infer a full moon for Mid-Autumn Festival / 中秋节 / 赏月, unless explicitly excluded or the scene is explicitly daytime without a requested moon. Other night scenes need a moon only when requested or central to the theme. Default none.",
 			Criteria: map[string]string{
@@ -204,7 +220,7 @@ func globalQuestions() map[string]jevloop.ChoiceQuestion {
 			},
 		},
 		"camera": {
-			Instructions: "Which camera view matches the request? Default to elevated isometric for readable multi-object scenes. Use eye-level, cinematic or top-down when requested.",
+			Instructions: "Which camera view matches the request? Default to cinematic for an immersive landscape with foreground and distant scenery. Use isometric, eye-level or top-down when explicitly requested.",
 			Criteria: map[string]string{
 				"isometric": "Elevated three-quarter isometric overview.",
 				"cinematic": "Low, wide cinematic angle.",

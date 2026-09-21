@@ -76,18 +76,21 @@ function makeCampfire(colors) {
 }
 
 function makePine(colors, random) {
-  const group = new THREE.Group();
-  const height = 1.1 + random() * 0.8;
-  group.add(mesh(new THREE.CylinderGeometry(0.12, 0.18, height, 7), material(colors.wood), 0, height / 2, 0));
-  for (let index = 0; index < 3; index += 1) {
-    const cone = mesh(
-      new THREE.ConeGeometry(0.82 - index * 0.13, 1.3, 8),
-      material(colors.leaf),
-      0,
-      height * 0.62 + index * 0.52,
-      0,
-    );
-    group.add(cone);
+  const group=new THREE.Group();
+  group.add(mesh(new THREE.CylinderGeometry(.055,.17,3.8,9),material(colors.wood),0,1.9,0));
+  for(let level=0;level<7;level++){
+    const y=.9+level*.42,radius=1.05*(1-level*.115);
+    const crown=new THREE.ConeGeometry(radius,1.2-level*.075,9,2);
+    const points=crown.attributes.position;
+    for(let i=0;i<points.count;i++){
+      const x=points.getX(i),z=points.getZ(i);
+      const jitter=1+.09*Math.sin(Math.atan2(z,x)*5+level*1.7);
+      points.setXYZ(i,x*jitter,points.getY(i),z*jitter);
+    }
+    crown.computeVertexNormals();
+    const tint=new THREE.Color(colors.leaf).lerp(new THREE.Color(0x91aa79),level*.045);
+    const branch=mesh(crown,material(tint),Math.sin(level*2)*.045,y,Math.cos(level)*.05);
+    branch.rotation.y=level*1.37;group.add(branch);
   }
   return group;
 }
@@ -127,16 +130,39 @@ function makeLantern(colors) {
   return group;
 }
 
-function makePond() {
-  const water = mesh(
-    new THREE.CylinderGeometry(1.6, 1.7, 0.12, 32),
-    material(0x5aacc4, { roughness: 0.12, metalness: 0.15, transparent: true, opacity: 0.78 }),
-    0,
-    0.06,
-    0,
-  );
-  water.receiveShadow = true;
-  return water;
+function makePond(random) {
+  const group=new THREE.Group(),outline=[],bankVertices=[];
+  for(let i=0;i<64;i++){
+    const a=i/64*Math.PI*2,r=1+.08*Math.sin(a*3)+.055*Math.cos(a*5);
+    outline.push(new THREE.Vector2(Math.cos(a)*4.3*r,Math.sin(a)*3.1*r));
+  }
+  const water=mesh(new THREE.ShapeGeometry(new THREE.Shape(outline)),material(0x468f93,{roughness:.22,metalness:.32}),0,.085,0);
+  water.rotation.x=-Math.PI/2;water.castShadow=false;group.add(water);
+  const time={value:0};water.material.userData.waterTime=time;
+  water.material.onBeforeCompile=shader=>{
+    shader.uniforms.waterTime=time;
+    shader.vertexShader='varying vec3 waterPosition;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nwaterPosition = position;');
+    shader.fragmentShader='uniform float waterTime;\nvarying vec3 waterPosition;\n'+shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      float ripples=sin(waterPosition.x*9.0+sin(waterPosition.y*3.0+waterTime*.7)*.5+waterTime*.5);
+      float glint=pow(max(0.0,ripples),32.0)*.035;
+      diffuseColor.rgb += vec3(glint*.7,glint,glint);`);
+  };
+  for(let i=0;i<64;i++){
+    const a=outline[i],b=outline[(i+1)%64];
+    const p=[[a.x,.045,-a.y],[a.x*1.13,.02,-a.y*1.13],[b.x*1.13,.02,-b.y*1.13],[b.x,.045,-b.y]];
+    for(const j of [0,1,2,0,2,3])bankVertices.push(...p[j]);
+  }
+  const bank=new THREE.BufferGeometry();bank.setAttribute('position',new THREE.Float32BufferAttribute(bankVertices,3));bank.computeVertexNormals();
+  group.add(mesh(bank,material(0xa9a084)));
+  for(let i=0;i<19;i++){
+    const p=outline[Math.floor(i/19*64)],stone=mesh(new THREE.IcosahedronGeometry(.28+random()*.13,1),material([0x999887,0xa7a797,0x7f8c81][i%3]),p.x*1.055,.17,-p.y*1.055);
+    stone.scale.set(1,.55,.85);stone.rotation.y=random()*6;group.add(stone);
+  }
+  for(let i=0;i<3;i++){
+    const pad=mesh(new THREE.CircleGeometry(.23,16),material(0x668661),-1.5+i*.4,.096,-.9+Math.sin(i)*.3);
+    pad.rotation.x=-Math.PI/2;group.add(pad);
+  }
+  return group;
 }
 
 function makeCrystal(colors, random) {
@@ -217,7 +243,7 @@ function rawAsset(type, colors, random) {
     rock: () => makeRock(colors, random),
     table: () => makeTable(colors),
     lantern: () => makeLantern(colors),
-    pond: () => makePond(),
+    pond: () => makePond(random),
     crystal: () => makeCrystal(colors, random),
     monolith: () => makeMonolith(colors),
     windmill: () => makeWindmill(colors),

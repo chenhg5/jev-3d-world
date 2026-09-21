@@ -4,6 +4,8 @@ import * as THREE from "three";
 import {createAsset,catalog} from "./models.js";
 import {planLayout,intersects} from "./layout.js";
 import {skyColor,createMoon,positionMoon,faceMoon} from "./sky.js";
+import {routePath,planPaths} from "./paths.js";
+import {terrainSampler,createLandscape,objectElevation,refreshPaths} from "./landscape.js";
 
 const colors={fabric:0xd7b982,wood:0x6d4930,leaf:0x315f42,accent:0xffa84c,stone:0x737772};
 function rng(seed=42){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
@@ -46,7 +48,9 @@ test("mixed-scale city preserves every object and packs nonoverlapping footprint
     const result=planLayout(input,{environment:"city"},rng(seed));
     assert.equal(result.items.length,input.length);
     for(const item of result.items.filter(a=>a.group!=="vehicle"))
-      assert.ok(Math.abs(item.z-1)>=item.depth/2+1.4,item.type+" occupies the road");
+      assert.ok(Math.abs(item.z-result.roadZ)>=item.depth/2+1.8,item.type+" occupies the road");
+    const train=result.items.find(i=>i.type==="train");
+    assert.ok(Math.abs(train.z-result.roadZ)>2,"railway must not run on the road");
     for(let i=0;i<result.items.length;i++)for(let j=i+1;j<result.items.length;j++)
       assert.ok(!intersects(result.items[i],result.items[j],0),result.items[i].type+" overlaps "+result.items[j].type);
   }
@@ -64,6 +68,47 @@ test("night sky remains dark across ground biomes",()=>{
     assert.ok(night.r+night.g+night.b < (day.r+day.g+day.b)*.1,environment);
     assert.ok(night.b>night.g && day.b>day.g,environment+" sky must not inherit green ground");
   }
+});
+
+test("camp furniture faces a shared fire and trees leave the foreground open",()=>{
+  for(let seed=1;seed<=8;seed++){
+    const input=prepared([["tent",3],["campfire",1],["chair",3],["pine",5],["picnic_table",1],["pond",1]]);
+    input.filter(i=>i.type==="chair").forEach(i=>{i.placement="around";});
+    const result=planLayout(input,{environment:"forest"},rng(seed));
+    const fire=result.items.find(i=>i.type==="campfire");
+    assert.equal(result.items.length,input.length);
+    for(const item of result.items.filter(i=>["tent","chair"].includes(i.type))){
+      assert.ok(Math.abs(item.facing-Math.atan2(fire.x-item.x,fire.z-item.z))<1e-8);
+      assert.ok(Math.hypot(fire.x-item.x,fire.z-item.z)<10,item.type+" too far from fire");
+    }
+    for(const item of result.items.filter(i=>i.type==="pine"))assert.ok(item.z<1,"tree blocks foreground");
+    for(let i=0;i<result.items.length;i++)for(let j=i+1;j<result.items.length;j++)
+      assert.ok(!intersects(result.items[i],result.items[j],0),"camp overlap");
+    assert.ok(planPaths(result).length>=2,"camp should have connected paths");
+  }
+});
+
+test("paths route around water and buildings instead of crossing them",()=>{
+  const obstacles=[{x:0,z:0,width:4,depth:4}];
+  const path=routePath({x:-5,z:0},{x:5,z:0},obstacles,12);
+  assert.ok(path.length>10);
+  for(let i=1;i<path.length;i++)for(let t=0;t<=1;t+=.1){
+    const x=path[i-1].x*(1-t)+path[i].x*t,z=path[i-1].z*(1-t)+path[i].z*t;
+    assert.ok(Math.abs(x)>=2.3||Math.abs(z)>=2.3,"path clips an obstacle");
+  }
+});
+
+test("landscape keeps the build area level, slopes in the distance and honors exact inventories",()=>{
+  const layout=planLayout(prepared([["tree",5],["tent",2]]),{environment:"forest"},rng());
+  const height=terrainSampler({environment:"forest"},layout);
+  for(const item of layout.items)assert.equal(height(item.x,item.z),-.035);
+  assert.ok(height(layout.landRadius+60,0)>2);
+  const landscape=createLandscape({environment:"forest",scenery:false},layout,0x354f35,rng());
+  assert.equal(landscape.group.getObjectByName("background-canopies"),undefined);
+  const coastal=terrainSampler({environment:"coast"},layout);
+  assert.ok(coastal(layout.landRadius+3,0)<-.42,"sea must cover terrain beyond shore");
+  assert.equal(objectElevation({type:"boat",x:layout.landRadius+4,z:0},{environment:"coast"},coastal),-.42,"boats float at sea level, not on the sea bed");
+  landscape.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
 });
 
 test("moon stays at a fixed sky position and scale while the camera orbits and resizes",()=>{
@@ -88,5 +133,85 @@ test("moon stays at a fixed sky position and scale while the camera orbits and r
       projections.push(screen);
     }
     assert.ok(projections[0].distanceTo(projections[1])>.1,"moon must not remain pinned to screen coordinates");
+  }
+});
+
+
+test("manual moves preserve asset scale and orientation, track terrain and keep boats afloat", async()=>{
+  const {moveItem}=await import("./editing.js");
+  const model=createAsset("tent",colors,rng());
+  model.scale.setScalar(1.2);model.rotation.y=.8;
+  const item={type:"tent",model,x:0,z:0,pool:new THREE.Object3D()};
+  const heightAt=(x,z)=>x*.1+z*.2;
+  moveItem(item,8,-3,{environment:"meadow"},heightAt);
+  assert.deepEqual([item.x,item.z],[8,-3]);
+  assert.deepEqual(model.position.toArray(),[8,heightAt(8,-3)+.008,-3]);
+  assert.equal(model.scale.x,1.2);assert.equal(model.rotation.y,.8);
+  assert.deepEqual([item.pool.position.x,item.pool.position.z],[8,-3]);
+  moveItem({...item,type:"boat"},20,5,{environment:"ocean"},heightAt);
+  assert.equal(model.position.y,-.42);
+});
+
+test("editing reroutes paths without replacing terrain or accumulating path meshes",()=>{
+  const items=[{type:"tent",group:"camp",x:-4,z:0,width:2,depth:2},
+    {type:"tent",group:"camp",x:4,z:0,width:2,depth:2}];
+  const layout={items,landRadius:12};
+  const spec={environment:"meadow",terrain:"rolling"};
+  const land=createLandscape(spec,layout,0x354f35,rng());
+  const ground=land.group.children[0],before=JSON.stringify(land.paths),oldPaths=land.pathGroup;
+  items[1].z=8;
+  refreshPaths(land,layout,spec);
+  assert.notEqual(JSON.stringify(land.paths),before);
+  assert.equal(land.group.children[0],ground);
+  assert.equal(oldPaths.parent,null);
+  refreshPaths(land,layout,spec);
+  assert.equal(land.group.children.filter(c=>c.name==="walking-paths").length,1);
+});
+
+test("scaling and rotation keep the grounded pivot and update collision footprints",async()=>{
+  const {transformItem}=await import("./editing.js");
+  const model=new THREE.Mesh(new THREE.BoxGeometry(2,2,6).translate(0,1,0),new THREE.MeshBasicMaterial());
+  const item={model,type:"house",x:7,z:-2,original:{scale:model.scale.clone(),rotation:0}};
+  transformItem(item,2,Math.PI/2,{environment:"meadow"},()=>.7);
+  assert.ok(Math.abs(item.width-12)<1e-8);
+  assert.ok(Math.abs(item.depth-4)<1e-8);
+  assert.equal(item.height,4);
+  assert.deepEqual(model.position.toArray(),[7,.708,-2]);
+  transformItem(item,1,0,{environment:"meadow"},()=>.7);
+  assert.equal(item.width,2);assert.equal(item.depth,6);assert.equal(model.scale.x,1);
+});
+
+test("append packing respects moved and resized anchors without changing old objects",async()=>{
+  const {appendLayout}=await import("./layout.js");
+  const current={landRadius:30,items:[{type:"pond",x:12,z:3,width:10,depth:8},
+    {type:"tent",x:3,z:9,width:7,depth:5,rotation:1.5,scale:2}]};
+  const before=JSON.stringify(current);
+  const added=appendLayout(Array.from({length:4},(_,index)=>({type:"cherry",group:"flora",anchor:"pond",placement:"right",index,count:4,width:3,depth:3,height:5})),current,{environment:"meadow"},rng());
+  assert.equal(JSON.stringify(current),before);
+  assert.equal(added.length,4);
+  for(let i=0;i<added.length;i++) {
+    assert.ok(added[i].x>12);
+    assert.ok(![...current.items,...added.slice(0,i)].some(o=>intersects(added[i],o,.29)));
+  }
+  assert.throws(()=>appendLayout([{type:"house",width:100,depth:100,index:0,count:1}],{items:[],landRadius:5},{environment:"coast"},rng()),/No clear space/);
+});
+
+test("floating toolbar stays near the object and within desktop and phone viewports",async()=>{
+  const {toolbarPosition}=await import("./editing.js");
+  const size={width:290,height:118};
+  const above=toolbarPosition({left:550,right:650,top:370,bottom:500},{width:1440,height:700},size);
+  assert.equal(above.x,455);
+  assert.equal(above.y,238);
+  for (const viewport of [{width:390,height:472},{width:1440,height:700}]) {
+    for (const bounds of [
+      {left:-200,right:20,top:0,bottom:60},
+      {left:viewport.width-20,right:viewport.width+100,top:20,bottom:200},
+      {left:10,right:300,top:440,bottom:650},
+    ]) {
+      const pos=toolbarPosition(bounds,viewport,size);
+      assert.ok(pos.x>=12 && pos.x+size.width<=viewport.width-12);
+      assert.ok(pos.y>=Math.min(112,viewport.height*.24));
+      assert.ok(pos.y+size.height<=viewport.height-48);
+    }
   }
 });

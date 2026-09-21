@@ -34,7 +34,7 @@ button {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-rows: minmax(430px, 62vh) auto;
+  grid-template-rows: minmax(480px, 70vh) auto;
 }
 
 .stage {
@@ -44,6 +44,11 @@ button {
   background: #0c1010;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+.view-controls { position:absolute; z-index:3; right:28px; top:74px; display:flex; gap:5px; padding:5px; background:#17252688; backdrop-filter:blur(14px); border:1px solid #ffffff20; border-radius:22px; }
+.view-controls button { border:0; border-radius:16px; padding:7px 12px; background:transparent; font-size:11px; cursor:pointer; }
+.view-controls button:hover,.view-controls button:focus-visible { background:#ffffff24; }
+@media(max-width:600px) { .view-controls { top:80px; right:14px; } .scene-hint { display:none; } }
 
 #canvas-host,
 #canvas-host canvas {
@@ -440,3 +445,50 @@ button {
     animation-duration: 0.01ms !important;
   }
 }
+
+#canvas-host canvas.can-move { cursor: grab; }
+#canvas-host canvas.is-moving { cursor: grabbing; }
+#canvas-host canvas:focus-visible { outline: 2px solid var(--accent, #c5ff91); outline-offset: -2px; }
+/* Screen-space toolbar anchored to the selected object's projected bounds. */
+.selection-panel {
+  position: absolute; z-index: 4; left: 0; top: 0; width: 290px;
+  display: grid; gap: 7px; padding: 9px 10px; max-width: calc(100% - 24px);
+  border: 1px solid rgba(197,255,145,.3); border-radius: 14px;
+  background: rgba(15,25,24,.94); backdrop-filter: blur(18px); color: #edf4e9;
+  box-shadow: 0 8px 28px #0004; user-select: none;
+  transition: opacity .12s; will-change: transform;
+}
+.selection-panel[hidden] { display: none; }
+.selection-panel.is-dragging { opacity: .3; pointer-events: none; }
+.selection-heading { display: flex; align-items: center; gap: 3px; }
+.selection-heading strong { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; padding-left: 3px; }
+.selection-panel button {
+  display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+  border: 0; border-radius: 7px; background: #ffffff0b; color: #e4efdc;
+  font: 23px/1 system-ui, sans-serif; cursor: pointer; touch-action: none;
+  transition: background .1s, color .1s;
+}
+.selection-heading button { width: 26px; height: 26px; font-size: 19px; background: transparent; color: #a5b49f; }
+.selection-panel button:hover { background: #c5ff9124; color: #d5ffad; }
+.selection-panel button:active { background: #c5ff9140; }
+.selection-panel button:focus-visible { outline: 2px solid #c5ff91; outline-offset: 2px; }
+.selection-panel button:disabled { opacity: .3; cursor: default; }
+.quick-transforms { display: flex; align-items: center; justify-content: space-between; gap: 3px; }
+.quick-transforms output { min-width: 38px; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; }
+.tool-divider { width: 1px; height: 22px; background: #ffffff20; margin: 0 3px; }
+.fine-transforms summary { width: fit-content; margin: 0 auto; padding: 3px 8px; font-size: 10px; color: #a9b9a0; cursor: pointer; }
+.fine-transforms[open] summary { margin-bottom: 7px; }
+.fine-transforms .transform-control { margin: 7px 2px; }
+@media (pointer: coarse) {
+  .selection-panel button { min-height: 38px; }
+}
+
+.transform-control { display:grid; grid-template-columns:48px minmax(90px,1fr) 42px; align-items:center; gap:8px; font-size:11px; }
+.transform-control input { width:100%; accent-color:#c5ff91; cursor:pointer; }
+.transform-control output { text-align:right; font-variant-numeric:tabular-nums; color:#c5ff91; }
+.compose-modes { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 14px; }
+.compose-modes button { border:1px solid #ffffff25; border-radius:8px; padding:10px 16px; background:transparent; color:#b6bcb6; cursor:pointer; font:inherit; font-size:13px; }
+.compose-modes button[aria-pressed="true"] { color:#dbf7c6; background:#9ddc7818; border-color:#9ddc7860; }
+.compose-modes button:disabled { opacity:.5; cursor:wait; }
+#mode-hint { margin-left:5px; font-size:12px; color:#98a094; }
+@media(max-width:720px) { #mode-hint { flex-basis:100%; margin:4px 0 0; } }
