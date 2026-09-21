@@ -1,0 +1,786 @@
+[
+  {
+    "type": "tent",
+    "description": "A compact low-poly camping tent for an outdoor campsite.",
+    "label": "帐篷",
+    "group": "camp",
+    "height": 1.6
+  },
+  {
+    "type": "cabin",
+    "description": "A small wooden cabin or lodge for a cozy settlement.",
+    "label": "木屋",
+    "group": "architecture",
+    "height": 2.8
+  },
+  {
+    "type": "campfire",
+    "description": "A glowing campfire that acts as a warm visual focal point.",
+    "label": "篝火",
+    "group": "camp",
+    "height": 0.65
+  },
+  {
+    "type": "tree",
+    "description": "ONLY generic unspecified trees / 普通树 / 未指定种类的树. EXCLUDE all explicitly named cherry, willow, palm, pine, bamboo: those have separate assets. '三棵樱花树' means ZERO generic trees, three cherry. 'five trees' means five generic trees.",
+    "label": "普通树",
+    "group": "flora",
+    "height": 3.4
+  },
+  {
+    "type": "pine",
+    "description": "Evergreen pine / 松树 / conifer, specifically requested pine trees. For unspecified trees use tree instead, not both.",
+    "label": "松树",
+    "group": "flora",
+    "height": 4
+  },
+  {
+    "type": "rock",
+    "description": "Low-poly rocks for natural detail and terrain accents.",
+    "label": "岩石",
+    "group": "terrain",
+    "height": 0.7
+  },
+  {
+    "type": "table",
+    "description": "Plain table / outdoor table / 桌子 / 户外桌. Include when any plain tables are explicitly requested. 'outdoor tables' means a few tables. Exclude only explicit picnic tables with attached benches.",
+    "label": "桌子",
+    "group": "decor",
+    "height": 0.8
+  },
+  {
+    "type": "lantern",
+    "description": "Warm standing lanterns for paths, camps, or night scenes.",
+    "label": "营地灯",
+    "group": "camp",
+    "height": 1.4
+  },
+  {
+    "type": "pond",
+    "description": "A small reflective pond as a tranquil landscape feature.",
+    "label": "池塘",
+    "group": "water",
+    "height": 0.1
+  },
+  {
+    "type": "crystal",
+    "description": "Glowing geometric crystals for fantasy, alien, or magical scenes.",
+    "label": "水晶",
+    "group": "terrain",
+    "height": 1.6
+  },
+  {
+    "type": "monolith",
+    "description": "A tall mysterious stone monolith for sci-fi or fantasy scenes.",
+    "label": "石碑",
+    "group": "landmark",
+    "height": 4.2
+  },
+  {
+    "type": "windmill",
+    "description": "A stylized windmill for pastoral or village scenes.",
+    "label": "风车",
+    "group": "architecture",
+    "height": 4.2
+  },
+  {
+    "type": "robot",
+    "description": "A friendly small exploration robot for futuristic scenes.",
+    "label": "机器人",
+    "group": "people",
+    "height": 1.25
+  },
+  {
+    "type": "palm",
+    "description": "Tropical palm trees / 椰子树 / 棕榈树, only for specified palms or a tropical setting.",
+    "label": "椰子树",
+    "group": "flora",
+    "height": 4.3
+  },
+  {
+    "type": "boat",
+    "description": "A sailboat / 帆船 / 小船 floating on water.",
+    "label": "帆船",
+    "group": "marine",
+    "height": 2.8
+  },
+  {
+    "type": "lighthouse",
+    "description": "A coastal lighthouse / 灯塔.",
+    "label": "灯塔",
+    "group": "architecture",
+    "height": 5
+  },
+  {
+    "type": "pavilion",
+    "description": "An open traditional Chinese pavilion / 亭子 / 凉亭 with upturned tiled eaves and columns.",
+    "label": "亭子",
+    "group": "architecture",
+    "height": 3.2
+  },
+  {
+    "type": "pagoda",
+    "description": "A multi-storey Chinese pagoda / 宝塔 / 塔楼 with stacked eaves, not a modern skyscraper.",
+    "label": "宝塔",
+    "group": "architecture",
+    "height": 6
+  },
+  {
+    "type": "hall",
+    "description": "A traditional Chinese hall / 中式楼阁 / 殿堂 / 中式建筑, rectangular with tiled roof.",
+    "label": "中式楼阁",
+    "group": "architecture",
+    "height": 3.8
+  },
+  {
+    "type": "bridge",
+    "description": "An arched pedestrian stone bridge / 石拱桥 / 小桥.",
+    "label": "石拱桥",
+    "group": "water",
+    "height": 1.2
+  },
+  {
+    "type": "train",
+    "description": "A complete locomotive and carriages on its own railway track / 火车 / 列车. Count trains, not individual carriages.",
+    "label": "火车",
+    "group": "vehicle",
+    "height": 2
+  },
+  {
+    "type": "station",
+    "description": "A small railway station / 火车站 with canopy and platform.",
+    "label": "火车站",
+    "group": "architecture",
+    "height": 3
+  },
+  {
+    "type": "building",
+    "description": "Rectangular modern high-rise buildings / 建筑大厦 / 方形高楼, of varied widths and heights. Default for generic modern buildings, excluding specifically round or tapered towers.",
+    "label": "方形大厦",
+    "group": "architecture",
+    "height": 7
+  },
+  {
+    "type": "round_tower",
+    "description": "Cylindrical round skyscraper / 圆柱形大厦 / 圆形高楼. Only when explicitly round or cylindrical.",
+    "label": "圆柱大厦",
+    "group": "architecture",
+    "height": 8
+  },
+  {
+    "type": "tapered_tower",
+    "description": "Tapered or stepped skyscraper / 锥形大厦 / 阶梯形高楼. Only when explicitly tapered, pyramidal or stepped.",
+    "label": "阶梯大厦",
+    "group": "architecture",
+    "height": 8
+  },
+  {
+    "type": "house",
+    "description": "Low-rise town houses / 低矮房屋 / 民居 with pitched roofs, not wooden cabins.",
+    "label": "住宅",
+    "group": "architecture",
+    "height": 3.4
+  },
+  {
+    "type": "elder",
+    "description": "Elderly person / 老人, gray hair and walking cane. Not additionally counted as adult man/woman unless requested as separate people. Do not use for unspecified 'people/人'; use person instead.",
+    "label": "老人",
+    "group": "people",
+    "height": 1.65
+  },
+  {
+    "type": "child",
+    "description": "Young child / 小孩 / 儿童 with unspecified gender. Use boy or girl when explicitly specified, not both. Do not use for unspecified 'people/人'; use person instead.",
+    "label": "小孩",
+    "group": "people",
+    "height": 1.05
+  },
+  {
+    "type": "man",
+    "description": "Adult man / 成年男性 / 男人 / 男生. Excludes specifically young boys or elderly men counted elsewhere. Do not use for unspecified 'people/人'; use person instead.",
+    "label": "男士",
+    "group": "people",
+    "height": 1.8
+  },
+  {
+    "type": "woman",
+    "description": "Adult woman / 成年女性 / 女人 / 女生. Excludes specifically young girls or elderly women counted elsewhere. Do not use for unspecified 'people/人'; use person instead.",
+    "label": "女士",
+    "group": "people",
+    "height": 1.7
+  },
+  {
+    "type": "boy",
+    "description": "Young boy / 男孩 / 小男孩; a child explicitly described as male. Do not use for unspecified 'people/人'; use person instead.",
+    "label": "男孩",
+    "group": "people",
+    "height": 1.05
+  },
+  {
+    "type": "girl",
+    "description": "Young girl / 女孩 / 小女孩; a child explicitly described as female. Do not use for unspecified 'people/人'; use person instead.",
+    "label": "女孩",
+    "group": "people",
+    "height": 1.05
+  },
+  {
+    "type": "mountain",
+    "description": "A mountain / 山 / 山峰 with rocky slopes and snowy peak. Not a volcano; count separately only when non-volcanic mountains are requested.",
+    "label": "山峰",
+    "group": "terrain",
+    "height": 7
+  },
+  {
+    "type": "volcano",
+    "description": "A volcano / 火山 with open crater and glowing lava.",
+    "label": "火山",
+    "group": "terrain",
+    "height": 6
+  },
+  {
+    "type": "cherry",
+    "label": "樱花树",
+    "group": "flora",
+    "height": 3.2,
+    "description": "A pink flowering cherry blossom tree / 樱花树, not a generic green tree."
+  },
+  {
+    "type": "willow",
+    "label": "柳树",
+    "group": "flora",
+    "height": 3.8,
+    "description": "A willow tree / 柳树 with drooping branches."
+  },
+  {
+    "type": "bamboo",
+    "label": "竹丛",
+    "group": "flora",
+    "height": 3.6,
+    "description": "A bamboo clump / 竹子 / 竹林."
+  },
+  {
+    "type": "cactus",
+    "label": "仙人掌",
+    "group": "flora",
+    "height": 2.2,
+    "description": "A branching desert cactus / 仙人掌."
+  },
+  {
+    "type": "bush",
+    "label": "灌木",
+    "group": "flora",
+    "height": 0.8,
+    "description": "A low shrub or bush / 灌木."
+  },
+  {
+    "type": "flowers",
+    "label": "花丛",
+    "group": "flora",
+    "height": 0.65,
+    "description": "A patch of colorful flowers / 花丛 / 花坛."
+  },
+  {
+    "type": "mushroom",
+    "label": "蘑菇",
+    "group": "flora",
+    "height": 0.6,
+    "description": "A mushroom / 蘑菇 with a spotted cap."
+  },
+  {
+    "type": "lotus",
+    "label": "荷花",
+    "group": "flora",
+    "height": 0.4,
+    "description": "A lotus flower with lily pads / 荷花, lives in water."
+  },
+  {
+    "type": "reeds",
+    "label": "芦苇",
+    "group": "flora",
+    "height": 1.3,
+    "description": "A clump of reeds / 芦苇 by water."
+  },
+  {
+    "type": "waterfall",
+    "label": "瀑布",
+    "group": "terrain",
+    "height": 6,
+    "description": "A waterfall / 瀑布 cascading down a rocky cliff into a pool."
+  },
+  {
+    "type": "river",
+    "label": "河流",
+    "group": "water",
+    "height": 0.12,
+    "description": "A winding river segment / 河流 / 小溪, distinct from a pond."
+  },
+  {
+    "type": "dune",
+    "label": "沙丘",
+    "group": "terrain",
+    "height": 3,
+    "description": "A smooth sand dune / 沙丘."
+  },
+  {
+    "type": "iceberg",
+    "label": "冰山",
+    "group": "terrain",
+    "height": 5,
+    "description": "A floating blue iceberg / 冰山."
+  },
+  {
+    "type": "cave",
+    "label": "洞穴",
+    "group": "terrain",
+    "height": 4,
+    "description": "A rocky cave / 洞穴 with a visible entrance."
+  },
+  {
+    "type": "arch",
+    "label": "自然石拱",
+    "group": "terrain",
+    "height": 4,
+    "description": "A natural rock arch / 自然石拱 / 石门, not a bridge."
+  },
+  {
+    "type": "torii",
+    "label": "鸟居",
+    "group": "architecture",
+    "height": 3.5,
+    "description": "A red Japanese torii gate / 鸟居."
+  },
+  {
+    "type": "moon_gate",
+    "label": "月洞门",
+    "group": "architecture",
+    "height": 3.2,
+    "description": "A Chinese garden wall with a circular moon gate / 月洞门."
+  },
+  {
+    "type": "corridor",
+    "label": "长廊",
+    "group": "architecture",
+    "height": 2.6,
+    "description": "A roofed Chinese garden corridor / 长廊."
+  },
+  {
+    "type": "stone_lion",
+    "label": "石狮",
+    "group": "decor",
+    "height": 1.2,
+    "description": "A guardian stone lion sculpture / 石狮."
+  },
+  {
+    "type": "castle",
+    "label": "城堡",
+    "group": "architecture",
+    "height": 6,
+    "description": "A medieval castle / 城堡 with towers and battlements."
+  },
+  {
+    "type": "church",
+    "label": "教堂",
+    "group": "architecture",
+    "height": 5.5,
+    "description": "A church / 教堂 with bell tower and cross."
+  },
+  {
+    "type": "mosque",
+    "label": "清真寺",
+    "group": "architecture",
+    "height": 5,
+    "description": "A mosque / 清真寺 with dome and minaret."
+  },
+  {
+    "type": "barn",
+    "label": "谷仓",
+    "group": "architecture",
+    "height": 3.4,
+    "description": "A red farm barn / 谷仓 / 农场仓库."
+  },
+  {
+    "type": "greenhouse",
+    "label": "温室",
+    "group": "architecture",
+    "height": 2.5,
+    "description": "A transparent greenhouse / 温室 with plants."
+  },
+  {
+    "type": "shop",
+    "label": "商店",
+    "group": "architecture",
+    "height": 2.8,
+    "description": "A small retail shop / 商店 with striped awning."
+  },
+  {
+    "type": "cafe",
+    "label": "咖啡馆",
+    "group": "architecture",
+    "height": 2.8,
+    "description": "A cafe / 咖啡馆 with awning and outdoor seating."
+  },
+  {
+    "type": "warehouse",
+    "label": "仓库",
+    "group": "architecture",
+    "height": 3,
+    "description": "An industrial warehouse / 仓库 with loading door; not a barn."
+  },
+  {
+    "type": "factory",
+    "label": "工厂",
+    "group": "architecture",
+    "height": 5,
+    "description": "A factory / 工厂 with chimneys and sawtooth roof."
+  },
+  {
+    "type": "observatory",
+    "label": "天文台",
+    "group": "architecture",
+    "height": 4,
+    "description": "An astronomical observatory / 天文台 with rotating dome."
+  },
+  {
+    "type": "apartment",
+    "label": "公寓楼",
+    "group": "architecture",
+    "height": 5.5,
+    "description": "An apartment block / 公寓楼 with balconies; distinct from an office skyscraper."
+  },
+  {
+    "type": "clocktower",
+    "label": "钟楼",
+    "group": "architecture",
+    "height": 5.8,
+    "description": "A clock tower / 钟楼 with clock face."
+  },
+  {
+    "type": "car",
+    "label": "汽车",
+    "group": "vehicle",
+    "height": 1.4,
+    "description": "A passenger car / 汽车 / 轿车."
+  },
+  {
+    "type": "bus",
+    "label": "公交车",
+    "group": "vehicle",
+    "height": 2.5,
+    "description": "A bus / 公交车."
+  },
+  {
+    "type": "truck",
+    "label": "卡车",
+    "group": "vehicle",
+    "height": 2.4,
+    "description": "A cargo truck / 卡车 / 货车."
+  },
+  {
+    "type": "bicycle",
+    "label": "自行车",
+    "group": "vehicle",
+    "height": 1.25,
+    "description": "A bicycle / 自行车."
+  },
+  {
+    "type": "motorcycle",
+    "label": "摩托车",
+    "group": "vehicle",
+    "height": 1.2,
+    "description": "A motorcycle / 摩托车."
+  },
+  {
+    "type": "tram",
+    "label": "有轨电车",
+    "group": "vehicle",
+    "height": 2.4,
+    "description": "A tram / 有轨电车 with overhead pantograph."
+  },
+  {
+    "type": "airplane",
+    "label": "飞机",
+    "group": "air",
+    "height": 2.2,
+    "description": "An airplane / 飞机 with wings and engines."
+  },
+  {
+    "type": "helicopter",
+    "label": "直升机",
+    "group": "air",
+    "height": 2.5,
+    "description": "A helicopter / 直升机 with main and tail rotors."
+  },
+  {
+    "type": "rocket",
+    "label": "火箭",
+    "group": "air",
+    "height": 6,
+    "description": "A space rocket / 火箭 on a launch pad."
+  },
+  {
+    "type": "ufo",
+    "label": "飞碟",
+    "group": "air",
+    "height": 1.7,
+    "description": "A hovering flying saucer / 飞碟 / UFO."
+  },
+  {
+    "type": "fishing_boat",
+    "label": "渔船",
+    "group": "marine",
+    "height": 1.8,
+    "description": "A fishing boat / 渔船 with wheelhouse and nets; not a sailboat."
+  },
+  {
+    "type": "ship",
+    "label": "轮船",
+    "group": "marine",
+    "height": 3,
+    "description": "A large ship / 轮船 / 邮轮 with decks and funnel."
+  },
+  {
+    "type": "submarine",
+    "label": "潜艇",
+    "group": "marine",
+    "height": 1.5,
+    "description": "A submarine / 潜艇 with periscope."
+  },
+  {
+    "type": "buoy",
+    "label": "浮标",
+    "group": "marine",
+    "height": 1.2,
+    "description": "A floating navigation buoy / 浮标."
+  },
+  {
+    "type": "dock",
+    "label": "码头",
+    "group": "water",
+    "height": 0.6,
+    "description": "A wooden pier or dock / 码头 extending into water."
+  },
+  {
+    "type": "bench",
+    "label": "长椅",
+    "group": "decor",
+    "height": 0.95,
+    "description": "A park bench / 长椅."
+  },
+  {
+    "type": "chair",
+    "label": "椅子",
+    "group": "decor",
+    "height": 0.9,
+    "description": "An individual chair / 椅子; not a bench."
+  },
+  {
+    "type": "fountain",
+    "label": "喷泉",
+    "group": "water",
+    "height": 2,
+    "description": "A tiered fountain / 喷泉."
+  },
+  {
+    "type": "statue",
+    "label": "雕像",
+    "group": "decor",
+    "height": 2.5,
+    "description": "A human figure statue on a pedestal / 雕像."
+  },
+  {
+    "type": "well",
+    "label": "水井",
+    "group": "decor",
+    "height": 1.8,
+    "description": "A stone well / 水井 with pulley roof."
+  },
+  {
+    "type": "fence",
+    "label": "栅栏",
+    "group": "decor",
+    "height": 0.9,
+    "description": "A section of wooden fence / 栅栏."
+  },
+  {
+    "type": "streetlight",
+    "label": "路灯",
+    "group": "decor",
+    "height": 3.5,
+    "description": "A city street light / 路灯; not a small camping lantern."
+  },
+  {
+    "type": "traffic_light",
+    "label": "红绿灯",
+    "group": "decor",
+    "height": 2.7,
+    "description": "A traffic light / 红绿灯."
+  },
+  {
+    "type": "mailbox",
+    "label": "邮筒",
+    "group": "decor",
+    "height": 1.15,
+    "description": "A postal mailbox / 邮筒 / 邮箱."
+  },
+  {
+    "type": "phonebooth",
+    "label": "电话亭",
+    "group": "decor",
+    "height": 2.3,
+    "description": "A red telephone booth / 电话亭."
+  },
+  {
+    "type": "umbrella",
+    "label": "遮阳伞",
+    "group": "decor",
+    "height": 2.3,
+    "description": "A beach parasol / 遮阳伞 / 沙滩伞."
+  },
+  {
+    "type": "picnic_table",
+    "label": "野餐桌",
+    "group": "decor",
+    "height": 0.8,
+    "description": "A picnic table with attached benches / 野餐桌; not a plain table."
+  },
+  {
+    "type": "market_stall",
+    "label": "集市摊位",
+    "group": "decor",
+    "height": 2.6,
+    "description": "A market stall / 集市摊位 / 摊位 with produce and canopy."
+  },
+  {
+    "type": "ferris_wheel",
+    "label": "摩天轮",
+    "group": "landmark",
+    "height": 8,
+    "description": "A Ferris wheel / 摩天轮."
+  },
+  {
+    "type": "swing",
+    "label": "秋千",
+    "group": "decor",
+    "height": 2.6,
+    "description": "A playground swing / 秋千."
+  },
+  {
+    "type": "slide",
+    "label": "滑梯",
+    "group": "decor",
+    "height": 2.2,
+    "description": "A playground slide / 滑梯."
+  },
+  {
+    "type": "signpost",
+    "label": "路牌",
+    "group": "decor",
+    "height": 1.8,
+    "description": "A directional signpost / 路牌."
+  },
+  {
+    "type": "crate",
+    "label": "木箱",
+    "group": "decor",
+    "height": 0.65,
+    "description": "A wooden crate / 木箱."
+  },
+  {
+    "type": "barrel",
+    "label": "木桶",
+    "group": "decor",
+    "height": 0.9,
+    "description": "A wooden barrel / 木桶."
+  },
+  {
+    "type": "flag",
+    "label": "旗帜",
+    "group": "decor",
+    "height": 2.5,
+    "description": "A flag on a pole / 旗帜."
+  },
+  {
+    "type": "solar_panel",
+    "label": "太阳能板",
+    "group": "decor",
+    "height": 1.3,
+    "description": "A solar panel array / 太阳能板."
+  },
+  {
+    "type": "wind_turbine",
+    "label": "风力发电机",
+    "group": "landmark",
+    "height": 7,
+    "description": "A modern three-blade wind turbine / 风力发电机, not a pastoral windmill."
+  },
+  {
+    "type": "telescope",
+    "label": "望远镜",
+    "group": "decor",
+    "height": 1.6,
+    "description": "A telescope on a tripod / 望远镜."
+  },
+  {
+    "type": "dog",
+    "label": "狗",
+    "group": "animal",
+    "height": 0.65,
+    "description": "A dog / 狗."
+  },
+  {
+    "type": "cat",
+    "label": "猫",
+    "group": "animal",
+    "height": 0.45,
+    "description": "A cat / 猫."
+  },
+  {
+    "type": "horse",
+    "label": "马",
+    "group": "animal",
+    "height": 1.8,
+    "description": "A horse / 马."
+  },
+  {
+    "type": "cow",
+    "label": "奶牛",
+    "group": "animal",
+    "height": 1.5,
+    "description": "A cow / 奶牛 / 牛."
+  },
+  {
+    "type": "sheep",
+    "label": "绵羊",
+    "group": "animal",
+    "height": 0.9,
+    "description": "A woolly sheep / 绵羊."
+  },
+  {
+    "type": "deer",
+    "label": "鹿",
+    "group": "animal",
+    "height": 1.65,
+    "description": "A deer / 鹿 with antlers."
+  },
+  {
+    "type": "bird",
+    "label": "鸟",
+    "group": "animal",
+    "height": 0.4,
+    "description": "A bird / 鸟."
+  },
+  {
+    "type": "fish",
+    "label": "鱼",
+    "group": "marine",
+    "height": 0.35,
+    "description": "A fish / 鱼 swimming in water."
+  },
+  {
+    "type": "person",
+    "label": "行人",
+    "group": "people",
+    "height": 1.75,
+    "description": "Generic people / person / pedestrian / 人 / 行人 when age and gender are UNSPECIFIED. 四个人 = four generic people. EXCLUDE specifically men, women, elderly or children counted by other assets."
+  }
+]

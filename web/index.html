@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Compose interactive 3D scenes with Jev and a library of 112 procedural assets."
+    />
+    <title>Jev Scene Composer</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="stage" aria-label="3D scene preview">
+        <div id="canvas-host"></div>
+        <header class="topbar">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <div>
+              <strong>SCENE / ONE</strong>
+              <span>Jev composition study</span>
+            </div>
+          </div>
+          <div class="engine-badge">
+            <span class="pulse-dot"></span>
+            JEV SCENE COMPOSER
+          </div>
+        </header>
+
+        <div class="scene-caption">
+          <span id="scene-environment">MEADOW</span>
+          <span id="scene-lighting">SUNSET LIGHT</span>
+          <span id="scene-camera">ISOMETRIC</span>
+        </div>
+
+        <div id="loading" class="loading-panel" hidden>
+          <div class="loader-ring"></div>
+          <strong>Jev is composing the scene</strong>
+          <span>Choosing assets, mood, camera and spatial intent</span>
+        </div>
+
+        <div class="scene-hint">Drag to orbit · Scroll to zoom</div>
+      </section>
+
+      <section class="composer" aria-labelledby="composer-title">
+        <div class="composer-copy">
+          <span class="eyebrow">FINITE ASSETS · COMBINATORIAL SCENES</span>
+          <h1 id="composer-title">Describe a world. See it assembled.</h1>
+          <p>
+            Jev selects from prepared geometry, lighting and layout choices.
+            Every run gets a fresh spatial variation—try the same prompt twice.
+          </p>
+        </div>
+
+        <div class="prompt-presets" role="group" aria-label="Example prompts">
+          <button data-prompt="A cozy low-poly campsite at sunset, with two tents around a central campfire, pine trees in the background and warm lanterns.">Sunset camp</button>
+          <button data-prompt="A mysterious moon landscape with one dark monolith, glowing cyan crystals scattered around it and two exploration robots.">Moon monolith</button>
+          <button data-prompt="A peaceful snowy cabin scene at night, surrounded by pine trees, rocks and warm lanterns, viewed from an isometric angle.">Snow cabin</button>
+          <button data-prompt="A bright pastoral village with a windmill, a pond, outdoor tables and five trees under clear daylight.">Village · 5 trees</button>
+          <button data-prompt="An island in a blue ocean with three palm trees and one lighthouse, two sailboats on the water, clear daylight, isometric view.">Ocean island</button>
+          <button data-prompt="A Chinese garden with two pavilions, one three-tier pagoda, one traditional Chinese hall, a stone arch bridge and a pond, five trees, one elderly person and two children, sunny isometric view.">Chinese garden</button>
+          <button data-prompt="One train passing a railway station, with three rectangular high-rises of different heights, one cylindrical tower and one stepped tower in the background, two men, two women, one boy and one girl in the foreground, clear daylight.">City railway</button>
+          <button data-prompt="One volcano erupting with lava beside two mountains, three exploration robots and a few rocks in the foreground, sunset, isometric view.">Volcano expedition</button>
+          <button data-prompt="A sunny European town square with one clock tower, one cafe, two shops, one fountain, three cherry blossom trees, two benches, two bicycles and four people, isometric view.">Town square</button>
+          <button data-prompt="A warm pastoral farm with one red barn, one greenhouse, three cows, five sheep, one horse, two fence sections, a few flower patches and one truck, daylight, isometric view.">Pastoral farm</button>
+          <button data-prompt="A seaside amusement park with one Ferris wheel, one swing, one slide, three beach umbrellas, two market stalls, four children and two palm trees, sunset, isometric view.">Seaside park</button>
+        </div>
+
+        <form id="prompt-form" class="prompt-box">
+          <label for="prompt">Scene request</label>
+          <textarea
+            id="prompt"
+            name="prompt"
+            rows="2"
+            maxlength="600"
+            placeholder="A mysterious ruin on the moon, with a dark monolith surrounded by glowing crystals…"
+          ></textarea>
+          <button id="compose-button" type="submit">
+            <span>Compose scene</span>
+            <span class="arrow" aria-hidden="true">↗</span>
+          </button>
+        </form>
+
+        <div class="result-row">
+          <div id="status" class="status" role="status">
+            <span class="status-dot"></span>
+            Ready with a local sample scene
+          </div>
+          <div id="scene-summary" class="scene-summary" aria-live="polite"></div>
+        </div>
+
+        <details class="asset-catalog">
+          <summary id="catalog-title">Available assets & quantity ranges</summary>
+          <p>Choose 0–20 of each asset. Prompts support English, Chinese and explicit quantities. Scenes use the available procedural models.</p>
+          <div class="catalog-controls">
+            <input id="catalog-search" aria-label="Search assets" placeholder="Search: cherry blossom, bicycle, train…" />
+            <select id="catalog-group" aria-label="Asset category"><option value="">All categories</option></select>
+            <span id="catalog-count"></span>
+          </div>
+          <div id="catalog-grid" class="catalog-grid"></div>
+          <p>Click an asset to preview its 3D model. Describe a scene above to combine assets.</p>
+        </details>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
