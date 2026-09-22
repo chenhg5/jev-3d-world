@@ -1,6 +1,6 @@
 # Jev 3D World
 
-Describe a scene in one sentence and explore it as an interactive 3D diorama.
+Describe a scene in one sentence and explore it as an interactive 3D world.
 Jev selects typed scene properties and objects; Three.js assembles the geometry
 locally. No text-generating LLM is required.
 
@@ -8,6 +8,10 @@ locally. No text-generating LLM is required.
 
 - 112 procedural asset types: architecture, plants, terrain, people, animals,
   vehicles, boats, playground equipment and more.
+- Hierarchical metropolis generation for downtown and open-world city prompts.
+  Jev chooses an urban archetype, district pattern, road network, density,
+  skyline, waterfront, civic space, traffic and landmark; the browser expands
+  that compact plan into dozens or hundreds of navigable buildings.
 - English and Chinese prompts, with quantities from 0 to 20 per asset type.
 - Broad themes infer characteristic props; explicit inventories preserve named
   objects and counts. Model judgments can still make mistakes.
@@ -66,30 +70,39 @@ the server after Go changes.
 ```text
 A bright pastoral village with a windmill, a pond, outdoor tables and five trees under clear daylight.
 An island with three palm trees, a lighthouse and two sailboats.
+A vast Shenzhen-inspired coastal technology metropolis with landscaped superblocks, twin skyline clusters and a harbor promenade.
+A large New York-inspired downtown with a tight street grid, dense blocks, a central park and a single-core skyline.
 出去外面露营的场景
 中秋节，但是是白天
 ```
 
 ## How it works
 
-1. The Go server asks Jev to classify the request as a theme, an object inventory,
-   or an empty landscape, and identify explicit moon instructions.
-2. Independent Choice questions select environment, lighting, camera,
+1. The Go server asks Jev to classify the request as a standard composition or
+   a large metropolis, as well as a theme, inventory or empty landscape.
+2. Standard scenes use independent Choice questions to select environment, lighting, camera,
    composition, palette, terrain, atmosphere, moon phase, and asset quantities
    and placement preferences.
-3. These questions are split into six bounded batches of at most 40 questions,
+3. Standard-scene questions are split into six bounded batches of at most 40 questions,
    with up to three requests in flight. Including intent classification, a
    composition uses seven API requests. The page reports their combined usage.
+   Metropolis scenes skip the per-asset catalog and use one compact city-plan
+   batch after intent classification, so their planning cost stays at two Jev
+   requests regardless of how many blocks are generated.
 4. The server validates the offered choices and reconciles moon visibility with
    explicit instructions and time of day.
-5. The browser builds the models, normalizes their scale, packs the activity
+5. For a metropolis, the browser divides the world into functional districts,
+   lays out blocks and streets, shapes the skyline, adds traffic, public space,
+   greenery and water, and registers building footprints for Explore collisions.
+   For a standard scene, it builds the models, normalizes their scale, packs the activity
    areas, routes paths around obstacles and builds the surrounding terrain.
    The moon has a fixed position above the scene.
 
-The world uses a finite terrain patch with distant fog, not infinite streaming
-terrain. Camera controls explore the scene through orbit and pan rather than
-first-person walking. Water uses stylized animated highlights, not physical
-reflections. Paths may be omitted when no accessible route exists.
+The world uses a finite terrain patch with distant fog rather than infinite
+streaming terrain. Large cities are semantic procedural interpretations, not
+geospatially accurate replicas of real cities. Water uses stylized animated
+highlights rather than physical reflections. Paths may be omitted when no
+accessible route exists.
 
 The catalog is finite: this demo combines prepared procedural models rather
 than generating arbitrary geometry. More assets also mean more classification
@@ -160,8 +173,8 @@ npm --prefix web run build
 
 Tests use local fixtures and mock HTTP servers; they do not require an API key.
 Frontend tests cover model geometry, scale, activity layout, path obstruction,
-terrain, marine placement, sky colors and moon position. Go tests cover the client, batching, counts and
-scene constraints.
+terrain, marine placement, sky colors, moon position and hierarchical city
+expansion. Go tests cover the client, batching, counts and scene constraints.
 
 ## Project layout
 
@@ -169,7 +182,7 @@ scene constraints.
 | --- | --- |
 | `scene/` | Scene composition, shared asset catalog and tests |
 | `cmd/scene-web/` | HTTP server and API |
-| `web/src/` | Three.js models, layout, sky and interface |
+| `web/src/` | Three.js models, standard layout, hierarchical city generator, sky and interface |
 | `scripts/start-scene.sh` | Local startup script |
 | Root Go files | Shared Jev client and bounded action-loop primitives |
 

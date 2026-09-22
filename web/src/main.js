@@ -10,6 +10,7 @@ import { createLandscape, objectElevation, refreshPaths } from "./landscape.js";
 import { skyColor, createSky, createMoon, positionMoon, faceMoon } from "./sky.js";
 import { createSceneEditor } from "./editing.js";
 import { createExplorer } from "./explore.js";
+import { createMetropolis } from "./city.js";
 import "./style.css";
 
 const host = document.querySelector("#canvas-host");
@@ -111,10 +112,10 @@ function deleteSceneItem(item) {
   waterTimes=[];
   world.traverse(child=>{if(child.material?.userData.waterTime)waterTimes.push(child.material.userData.waterTime);});
   const counts={};
-  for (const entry of currentLayout.items) counts[entry.type]=(counts[entry.type]??0)+1;
+  for (const entry of currentLayout.items.filter(entry=>entry.editable!==false)) counts[entry.type]=(counts[entry.type]??0)+1;
   currentSpec={...currentSpec,objects:Object.entries(counts).map(([type,count])=>({type,count,placement:"auto"}))};
   host.dataset.renderedCounts=JSON.stringify(counts);
-  editor.setItems(currentLayout.items,currentSpec,landscape.heightAt,landscape.extent);
+  editor.setItems(currentLayout.items.filter(entry=>entry.editable!==false),currentSpec,landscape.heightAt,landscape.extent);
   updateSceneAfterEdit();
   updateSummary(currentSpec);
   setStatus("Deleted "+item.label+" · "+currentLayout.items.length+" objects remaining");
@@ -261,6 +262,20 @@ function addAtmosphere(kind, colors, random) {
 }
 
 function applyCamera(kind, random) {
+  if(currentLayout?.city){
+    const extent=currentLayout.landRadius/ .72;
+    const jitter=(random()-.5)*.08;
+    const settings={
+      isometric:{position:[extent*.58,extent*.58,extent*.67],target:[0,8,0],fov:42},
+      cinematic:{position:[extent*(.47+jitter),extent*.12,extent*.56],target:[0,13,-extent*.08],fov:45},
+      top_down:{position:[.1,extent*.92,.1],target:[0,0,0],fov:44},
+      eye_level:{position:[extent*.34,3.2,extent*.34],target:[0,7,0],fov:58},
+    }[kind]||{position:[extent*.58,extent*.58,extent*.67],target:[0,8,0],fov:42};
+    camera.position.set(...settings.position);controls.target.set(...settings.target);camera.fov=settings.fov;
+    camera.far=900;controls.maxDistance=extent*3;camera.updateProjectionMatrix();
+    if(scene.fog){scene.fog.near=extent*.72;scene.fog.far=extent*2.5;}
+    controls.update();return;
+  }
   const positions = {
     isometric: [6, 15, 19],
     cinematic: [4, 4.8, 20],
@@ -336,6 +351,38 @@ function prepareItems(spec, colors, random) {
   return prepared;
 }
 
+function renderMetropolisScene(spec, random) {
+  const city=createMetropolis(spec,random);
+  world.add(city.group);
+  currentLayout=city.layout;
+  landscape=city.landscape;
+  assetBounds=new THREE.Box3().setFromObject(city.group);
+  host.dataset.landscape="metropolis";
+  host.dataset.pathCount="0";
+  host.dataset.cityStats=JSON.stringify(city.stats);
+  host.dataset.renderedCounts="{}";
+  updateLayoutData();
+  editor.setItems([],spec,landscape.heightAt,landscape.extent);
+  world.traverse(child=>{
+    if(child.isDirectionalLight){
+      const radius=city.layout.landRadius+8;
+      Object.assign(child.shadow.camera,{left:-radius,right:radius,top:radius,bottom:-radius,far:radius*5});
+      child.position.set(-radius*.55,radius*1.15,radius*.5);
+      child.shadow.camera.updateProjectionMatrix();
+    }
+  });
+  if(skyMoon){
+    positionMoon(skyMoon,city.layout.landRadius,assetBounds.max.y);
+    const diameter=skyMoon.scale.x*2.8;
+    assetBounds.union(new THREE.Box3().setFromCenterAndSize(skyMoon.position,new THREE.Vector3(diameter,diameter,diameter)));
+  }
+  applyCamera(spec.camera||"cinematic",random);
+  environmentLabel.textContent=(spec.city?.archetype||"metropolis").replaceAll("_"," ").toUpperCase();
+  lightingLabel.textContent=(spec.lighting+" LIGHT").toUpperCase();
+  cameraLabel.textContent=(spec.camera||"cinematic").replace("_"," ").toUpperCase();
+  updateSummary(spec);
+}
+
 function renderScene(spec, promptText) {
   explorer.reset();
   disposeWorld();
@@ -361,6 +408,11 @@ function renderScene(spec, promptText) {
     addStars(random);
   }
   addAtmosphere(spec.atmosphere || "clear", colors, random);
+
+  if(spec.scenePack==="metropolis"){
+    renderMetropolisScene(spec,random);
+    return;
+  }
 
   const prepared = prepareItems(spec, colors, random);
   assetBounds = new THREE.Box3();
@@ -422,7 +474,12 @@ function renderScene(spec, promptText) {
 
 function updateSummary(spec) {
   summary.replaceChildren();
+  const cityEntries=spec.scenePack==="metropolis" ? [
+    "large city",spec.city?.archetype,spec.city?.districts,spec.city?.roads,spec.city?.density,spec.city?.skyline,
+    spec.city?.waterfront!=="none"?spec.city?.waterfront:null,spec.city?.civicSpace,spec.city?.traffic+" traffic",
+  ].filter(Boolean) : [];
   const entries = [
+    ...cityEntries,
     spec.composition,
     spec.palette,
     spec.terrain,
@@ -476,7 +533,7 @@ function appendScene(delta, promptText) {
   currentSpec={...currentSpec,preview:false,objects:Object.entries(counts).map(([type,count])=>({type,count,placement:"auto"}))};
   previewMode=false;
   host.dataset.renderedCounts=JSON.stringify(counts);
-  editor.setItems(currentLayout.items,currentSpec,landscape.heightAt,landscape.extent);
+  editor.setItems(currentLayout.items.filter(item=>item.editable!==false),currentSpec,landscape.heightAt,landscape.extent);
   updateSceneAfterEdit();
   updateSummary(currentSpec);
   fitAssets();
@@ -530,7 +587,7 @@ async function compose(promptText) {
     setStatus(
       (mode==="append"?(added?"Added "+added+" objects · ":"No additions selected; existing scene kept · "):"") + seconds + " s · " + payload.scene.modelCalls + " Jev requests · " + payload.scene.inputTokens.toLocaleString() +
         " input tokens · " + confidence + "% confidence · variant " + payload.scene.variant +
-        (payload.scene.objects.length === 0 ? " · Try naming the objects to add" : ""),
+        (payload.scene.objects.length === 0 && payload.scene.scenePack !== "metropolis" ? " · Try naming the objects to add" : ""),
     );
     composeButton.querySelector("span").textContent = mode==="append"?"Add more":"Generate another";
   } catch (error) {
@@ -614,7 +671,7 @@ function resize() {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   if (!explorer.active) {
-    fitAssets();
+    if(!currentLayout?.city)fitAssets();
     controls.update();
   }
 }

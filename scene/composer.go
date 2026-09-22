@@ -36,6 +36,22 @@ type AvatarSpec struct {
 	AccessoryColor string `json:"accessoryColor"`
 }
 
+// CitySpec is a compact, semantic plan for a large procedural city. Jev picks
+// the few dimensions that affect the whole place; the renderer expands them
+// into roads, districts and hundreds of buildings without asking the model to
+// place every object individually.
+type CitySpec struct {
+	Archetype  string `json:"archetype"`
+	Districts  string `json:"districts"`
+	Roads      string `json:"roads"`
+	Density    string `json:"density"`
+	Skyline    string `json:"skyline"`
+	Waterfront string `json:"waterfront"`
+	CivicSpace string `json:"civicSpace"`
+	Traffic    string `json:"traffic"`
+	Landmark   string `json:"landmark"`
+}
+
 type Spec struct {
 	Variant      uint32       `json:"variant"`
 	Environment  string       `json:"environment"`
@@ -48,6 +64,8 @@ type Spec struct {
 	Moon         string       `json:"moon"`
 	Scenery      bool         `json:"scenery"`
 	WaterScale   string       `json:"waterScale"`
+	ScenePack    string       `json:"scenePack"`
+	City         CitySpec     `json:"city"`
 	Avatar       AvatarSpec   `json:"avatar"`
 	Objects      []ObjectSpec `json:"objects"`
 	Model        string       `json:"model"`
@@ -73,6 +91,13 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		return Spec{}, fmt.Errorf("choice evaluator is required")
 	}
 	intent, err := c.Evaluator.EvaluateChoices(ctx, map[string]string{"request": request}, map[string]jevloop.ChoiceQuestion{
+		"scene_pack": {
+			Instructions: "What scale of procedural world does `request` require? Choose metropolis only for a broad urban district, downtown, city center, large city skyline, GTA-like/open-world city, or a request to explore many streets and blocks. A town square, a few buildings, a station, a village or a named list of urban objects remains standard.",
+			Criteria: map[string]string{
+				"standard":   "A normal finite scene, landscape, room, village, single street, town square, station or explicit object composition.",
+				"metropolis": "A large city-scale world with multiple districts, a road network, many blocks and a skyline intended for overview and exploration.",
+			},
+		},
 		"scenery": {
 			Instructions: "May the scene include additional background woodland? Read `request`. Exact quantities of trees, 'only' inventories, explicit no-trees/no-forest constraints and empty scenes prohibit extra trees. Otherwise a forest / woods / woodland / 森林 / 山林 setting invites background woodland even when specific foreground props are listed.",
 			Criteria: map[string]string{
@@ -108,8 +133,22 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 	if moonRequest != "explicit" && moonRequest != "excluded" && moonRequest != "unspecified" {
 		return Spec{}, fmt.Errorf("invalid moon request %q", moonRequest)
 	}
+	scenePack := intent.Answers["scene_pack"].Choice
+	if scenePack != "standard" && scenePack != "metropolis" {
+		return Spec{}, fmt.Errorf("invalid scene pack %q", scenePack)
+	}
 	questions := globalQuestions()
-	for _, item := range assets {
+	selectedAssets := assets
+	if scenePack == "metropolis" {
+		for name, question := range cityQuestions() {
+			questions[name] = question
+		}
+		// Buildings, traffic, parks and street furniture are expanded by the
+		// procedural city generator. Skipping 224 per-asset questions is the
+		// hierarchy that makes city-scale composition fast and bounded.
+		selectedAssets = nil
+	}
+	for _, item := range selectedAssets {
 		policy := "If THIS asset type is absent, negated, or only a different subtype is requested, choose 0. Otherwise use the exact quantity attached to THIS type, capped at 20. Never copy a quantity from another object type. An explicitly requested plural of THIS type without a number means 2 or 3, never zero."
 		if mode == "theme" {
 			policy = "The user gave a broad theme, not a literal inventory. Infer a sparse recognizable scene. Include this asset ONLY if it is a defining element of that activity/place or basic natural scenery. Choose 1 for a focal object or 2–3 for repeated scenery. Choose 0 for optional accessories, unrelated objects, explicit exclusions and redundant subtypes. For unspecified people use person, not every age/gender subtype. For unspecified trees use tree, not every species."
@@ -132,9 +171,10 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		}
 	}
 	result, modelCalls, err := c.evaluateBatches(ctx, map[string]any{
-		"request": request,
-		"mode":    mode,
-		"rule":    "Explicitly requested objects and counts take priority. Broad category names must not automatically include every subtype. Coordinates, scale and geometry are handled by code.",
+		"request":    request,
+		"mode":       mode,
+		"scene_pack": scenePack,
+		"rule":       "Explicitly requested objects and counts take priority. Broad category names must not automatically include every subtype. Coordinates, scale and geometry are handled by code.",
 	}, questions)
 	if err != nil {
 		return Spec{}, err
@@ -158,6 +198,7 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		Moon:        answer("moon", false).Choice,
 		Scenery:     intent.Answers["scenery"].Choice == "natural",
 		WaterScale:  answer("water_scale", false).Choice,
+		ScenePack:   scenePack,
 		Avatar: AvatarSpec{
 			Jacket:         answer("avatar_jacket", true).Choice,
 			Trousers:       answer("avatar_trousers", true).Choice,
@@ -171,6 +212,21 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		Confidence:   1,
 		Objects:      []ObjectSpec{},
 	}
+	if scenePack == "metropolis" {
+		spec.Environment = "city"
+		spec.Terrain = "open"
+		spec.City = CitySpec{
+			Archetype:  answer("city_archetype", true).Choice,
+			Districts:  answer("city_districts", true).Choice,
+			Roads:      answer("city_roads", true).Choice,
+			Density:    answer("city_density", true).Choice,
+			Skyline:    answer("city_skyline", true).Choice,
+			Waterfront: answer("city_waterfront", false).Choice,
+			CivicSpace: answer("city_civic_space", true).Choice,
+			Traffic:    answer("city_traffic", true).Choice,
+			Landmark:   answer("city_landmark", true).Choice,
+		}
+	}
 	// Explicit exclusions and the selected time of day override thematic inference.
 	// A requested daytime moon is supported, but a holiday alone cannot add one.
 	if moonRequest == "excluded" || (moonRequest != "explicit" && spec.Lighting != "night") {
@@ -179,7 +235,12 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 	for _, name := range []string{"environment", "lighting", "camera", "composition", "palette", "terrain", "atmosphere"} {
 		spec.Confidence = math.Min(spec.Confidence, answer(name, name != "environment" && name != "lighting").Confidence)
 	}
-	for _, item := range assets {
+	if scenePack == "metropolis" {
+		for _, name := range []string{"city_archetype", "city_districts", "city_roads", "city_density", "city_skyline", "city_waterfront", "city_civic_space", "city_traffic", "city_landmark"} {
+			spec.Confidence = math.Min(spec.Confidence, answer(name, name != "city_waterfront").Confidence)
+		}
+	}
+	for _, item := range selectedAssets {
 		countAnswer := answer(item.name+"_count", false)
 		count, err := strconv.Atoi(countAnswer.Choice)
 		if err != nil {
@@ -197,6 +258,90 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		})
 	}
 	return spec, nil
+}
+
+func cityQuestions() map[string]jevloop.ChoiceQuestion {
+	return map[string]jevloop.ChoiceQuestion{
+		"city_archetype": {
+			Instructions: "For a large metropolis, which broad urban character best matches `request`? Use the user's cultural, geographic and fictional cues. This controls materials, block proportions and vegetation, not a literal reconstruction.",
+			Criteria: map[string]string{
+				"atlantic":     "Dense masonry-and-glass North American downtown with strong avenues, older perimeter blocks and a compact business core; suitable for New York-like cues.",
+				"coastal_tech": "Contemporary subtropical Asian technology metropolis with broad boulevards, glass towers, landscaped setbacks and clustered supertalls; suitable for Shenzhen-like cues.",
+				"sunbelt":      "Wide-road, palm-lined, entertainment-oriented open-world city with mixed low-rise districts and a sharp downtown cluster; suitable for GTA-like fictional cues.",
+				"global":       "Neutral international metropolis mixing office towers, apartments, retail podiums and civic space.",
+			},
+		},
+		"city_roads": {
+			Instructions: "Which city road structure best fits `request`?",
+			Criteria: map[string]string{
+				"tight_grid":  "Frequent narrow streets and compact walkable blocks.",
+				"avenue_grid": "Regular blocks crossed by several wider avenues.",
+				"superblocks": "Large blocks, broad boulevards and landscaped building setbacks.",
+				"mixed":       "A central grid that loosens toward surrounding districts.",
+			},
+		},
+		"city_districts": {
+			Instructions: "How should the large city be divided into functional districts? Choose the pattern that best reflects the requested place and activities.",
+			Criteria: map[string]string{
+				"core_ring":       "A dominant office core, a mixed commercial belt and progressively lower residential outer districts.",
+				"mixed_quarters":  "Several varied quarters where offices, apartments, shops and leisure uses mix at different scales.",
+				"polycentric":     "Multiple business and residential centers distributed across the city, suitable for a broad megacity.",
+				"waterfront_axis": "Dense business and cultural districts follow a harbor, river or coastal development axis.",
+			},
+		},
+		"city_density": {
+			Instructions: "How dense and extensive should the requested large city feel?",
+			Criteria: map[string]string{
+				"urban":    "A substantial city with breathing room, parks and medium-rise edges.",
+				"dense":    "Continuous urban blocks and a busy high-rise center.",
+				"megacity": "Very dense, expansive city fabric with multiple centers and many high-rises.",
+			},
+		},
+		"city_skyline": {
+			Instructions: "Which skyline organization best matches `request`?",
+			Criteria: map[string]string{
+				"single_core": "One dominant central business district fading toward lower edges.",
+				"twin_core":   "Two distinct high-rise clusters connected by an urban corridor.",
+				"linear":      "A long ridge of towers following a boulevard or coast.",
+				"distributed": "Several smaller high-rise clusters across the city.",
+			},
+		},
+		"city_waterfront": {
+			Instructions: "What major water relationship is explicitly present or strongly characteristic in `request`? Do not add water to an ordinary inland downtown.",
+			Criteria: map[string]string{
+				"none":   "No major waterfront is requested or implied.",
+				"river":  "A river divides or borders the city, with bridges and embankments.",
+				"harbor": "A broad bay, harbor or seafront forms one edge of the city.",
+				"canal":  "A narrower urban canal is integrated with streets and public space.",
+			},
+		},
+		"city_civic_space": {
+			Instructions: "Which major open-space anchor best fits this city?",
+			Criteria: map[string]string{
+				"central_park": "A large rectangular green park interrupts the grid.",
+				"civic_plaza":  "A hard-surfaced central square framed by landmark buildings.",
+				"transit_hub":  "A station concourse and transport interchange organize the center.",
+				"promenade":    "A landscaped linear public space follows water or a major avenue.",
+			},
+		},
+		"city_traffic": {
+			Instructions: "How much visible street traffic suits the requested city and time?",
+			Criteria: map[string]string{
+				"light":   "Sparse vehicles and calm streets.",
+				"busy":    "Regular cars, buses and active avenues.",
+				"intense": "Heavy traffic on most major roads in a crowded megacity.",
+			},
+		},
+		"city_landmark": {
+			Instructions: "Which abstract landmark silhouette best supports the requested skyline? Choose a form, not a named copyrighted or real building replica.",
+			Criteria: map[string]string{
+				"spire":       "A very tall tapered tower with a needle-like crown.",
+				"terraced":    "A tall stepped or terraced tower with multiple setbacks.",
+				"twin_towers": "A paired landmark tower composition.",
+				"observation": "A slender observation tower with an elevated viewing pod.",
+			},
+		},
+	}
 }
 
 func globalQuestions() map[string]jevloop.ChoiceQuestion {

@@ -28,6 +28,7 @@ func (fakeEvaluator) EvaluateChoices(
 	}
 	answers["environment"] = jevloop.ChoiceAnswer{Choice: "forest", Confidence: 0.9}
 	answers["scene_mode"] = jevloop.ChoiceAnswer{Choice: "inventory", Confidence: 0.9}
+	answers["scene_pack"] = jevloop.ChoiceAnswer{Choice: "standard", Confidence: 0.9}
 	answers["moon_request"] = jevloop.ChoiceAnswer{Choice: "unspecified", Confidence: 0.9}
 	answers["scenery"] = jevloop.ChoiceAnswer{Choice: "minimal", Confidence: 0.9}
 	answers["water_scale"] = jevloop.ChoiceAnswer{Choice: "small", Confidence: 0.9}
@@ -43,6 +44,41 @@ func (fakeEvaluator) EvaluateChoices(
 	return jevloop.ChoiceResult{
 		Model: "test", Answers: answers, Usage: jevloop.Usage{InputTokens: 42},
 	}, nil
+}
+
+type metropolisEvaluator struct{}
+
+func (metropolisEvaluator) EvaluateChoices(ctx context.Context, state any, questions map[string]jevloop.ChoiceQuestion) (jevloop.ChoiceResult, error) {
+	result, err := (fakeEvaluator{}).EvaluateChoices(ctx, state, questions)
+	result.Answers["scene_pack"] = jevloop.ChoiceAnswer{Choice: "metropolis", Confidence: 1}
+	choices := map[string]string{
+		"city_archetype": "coastal_tech", "city_roads": "superblocks", "city_density": "megacity",
+		"city_districts": "polycentric",
+		"city_skyline":   "twin_core", "city_waterfront": "harbor", "city_civic_space": "promenade",
+		"city_traffic": "busy", "city_landmark": "terraced",
+	}
+	for name, choice := range choices {
+		if _, ok := questions[name]; ok {
+			result.Answers[name] = jevloop.ChoiceAnswer{Choice: choice, Confidence: .95}
+		}
+	}
+	return result, err
+}
+
+func TestMetropolisUsesHierarchicalCityPlanWithoutPerAssetQuestions(t *testing.T) {
+	spec, err := (Composer{Evaluator: metropolisEvaluator{}}).ComposeVariant(context.Background(), "an expansive Shenzhen-like technology metropolis", 19)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.ScenePack != "metropolis" || spec.Environment != "city" || spec.City.Density != "megacity" || spec.City.Skyline != "twin_core" {
+		t.Fatalf("unexpected city plan: %#v", spec)
+	}
+	if len(spec.Objects) != 0 {
+		t.Fatalf("metropolis should be expanded by code, got assets: %#v", spec.Objects)
+	}
+	if spec.ModelCalls != 2 {
+		t.Fatalf("expected intent + one compact city batch, got %d calls", spec.ModelCalls)
+	}
 }
 
 func TestCatalogCoversExactCounts(t *testing.T) {

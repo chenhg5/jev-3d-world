@@ -6,9 +6,29 @@ import {planLayout,intersects} from "./layout.js";
 import {skyColor,createMoon,positionMoon,faceMoon} from "./sky.js";
 import {routePath,planPaths} from "./paths.js";
 import {terrainSampler,createLandscape,objectElevation,refreshPaths} from "./landscape.js";
+import {createMetropolis} from "./city.js";
 
 const colors={fabric:0xd7b982,wood:0x6d4930,leaf:0x315f42,accent:0xffa84c,stone:0x737772};
 function rng(seed=42){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
+test("hierarchical city plans expand into large navigable worlds",()=>{
+  for(const [archetype,density,roads,skyline] of [
+    ["atlantic","dense","tight_grid","single_core"],
+    ["coastal_tech","megacity","superblocks","twin_core"],
+    ["sunbelt","urban","avenue_grid","distributed"],
+  ]){
+    const city=createMetropolis({city:{archetype,density,roads,skyline,districts:"polycentric",waterfront:"harbor",civicSpace:"central_park",traffic:"busy",landmark:"spire"}},rng(7));
+    assert.ok(city.stats.buildings>30,`${archetype} building count`);
+    assert.ok(city.stats.blocks>=10,`${archetype} district blocks`);
+    assert.ok(city.stats.roads>=6,`${archetype} road network`);
+    assert.ok(Object.values(city.stats.districts).filter(Boolean).length>=3,`${archetype} needs several districts`);
+    assert.equal(city.layout.items.length,city.stats.buildings+1);
+    assert.ok(city.layout.landRadius>45,"city must be much larger than a diorama");
+    assert.equal(city.landscape.heightAt(10,10),.18);
+    const bounds=new THREE.Box3().setFromObject(city.group);
+    assert.ok(bounds.getSize(new THREE.Vector3()).x>60);
+    city.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
+  }
+});
 test("every catalog asset builds nonempty finite geometry at its documented scale",()=>{
   assert.ok(catalog.length>=100);
   assert.equal(new Set(catalog.map(a=>a.type)).size,catalog.length);
