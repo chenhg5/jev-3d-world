@@ -46,7 +46,7 @@ export function createLandscape(spec,layout,baseColor,random) {
   const onPath=(x,z)=>paths.some(p=>p.some(n=>Math.hypot(x-n.x,z-n.z)<.65));
   const pathGroup=createPathGroup(paths,heightAt,spec);group.add(pathGroup);
 
-  if(spec.environment==="city"){
+  if(spec.environment==="city"&&!layout.items.some(item=>item.type==="race_track")){
     const roadZ=layout.roadZ??1;
     const road=new THREE.Mesh(new THREE.PlaneGeometry(extent*2,3),new THREE.MeshStandardMaterial({color:0x39434a,roughness:.95}));
     road.rotation.x=-Math.PI/2;road.position.set(0,.005,roadZ);road.receiveShadow=true;group.add(road);

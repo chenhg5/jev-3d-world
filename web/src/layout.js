@@ -75,6 +75,11 @@ export function planLayout(items,spec,random) {
   let buildingIndex=0,personIndex=0,plantIndex=0;
   const semanticPosition=item=>{
     const {group,type,index,count}=item;
+    if(type==="race_track")return {x:0,z:0};
+    if(type==="race_car"){
+      const track=placed.find(p=>p.type==="race_track");
+      if(track){const a=(index/Math.max(1,count))*Math.PI*2+.35,r=Math.min(track.width,track.depth)*.38;return{x:track.x+Math.cos(a)*r,z:track.z+Math.sin(a)*r};}
+    }
     if(groundWater.has(type))return {x:urban?extent*.4:extent*.7,z:urban?extent*.45:-extent*.22};
     const fire=placed.find(p=>p.type==="campfire");
     const water=placed.find(p=>p.type==="pond"||p.type==="river");
@@ -160,7 +165,8 @@ export function planLayout(items,spec,random) {
     if(placement==="around"&&!hasActivityAnchor){const a=item.index/Math.max(1,item.count)*Math.PI*2;desired={x:Math.cos(a)*extent*.6,z:Math.sin(a)*extent*.6};}
     const waterBound=coastal&&waterLife.has(item.type);
     if(waterBound){const a=.25+item.index/Math.max(1,item.count)*Math.PI;desired={x:Math.cos(a)*(extent+4+item.width/2),z:Math.sin(a)*(extent+4+item.depth/2)};}
-    const canShare=(other)=>["bridge","lotus","dock"].includes(item.type)&&["pond","river"].includes(other.type);
+    const canShare=(other)=>(["bridge","lotus","dock"].includes(item.type)&&["pond","river"].includes(other.type))||
+      (item.type==="race_car"&&other.type==="race_track");
     let best=null,bestScore=Infinity;
     for(let attempt=0;attempt<420;attempt++){
       const a=attempt*2.399, radius=attempt?Math.sqrt(attempt)*.7:0;
@@ -182,6 +188,10 @@ export function planLayout(items,spec,random) {
     placed.push(best);
   }
   for(const item of placed){
+    if(item.type==="race_car"){
+      const track=placed.find(p=>p.type==="race_track");
+      if(track)item.facing=Math.atan2(item.z-track.z,item.x-track.x)+Math.PI/2;
+    }
     const target = ["tent","chair"].includes(item.type)
       ? placed.find(p=>p.type==="campfire") || placed.find(p=>p.type==="table")
       : item.group==="people" ? placed.filter(p=>["campfire","fountain","table","picnic_table"].includes(p.type))

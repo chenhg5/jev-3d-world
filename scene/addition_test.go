@@ -19,6 +19,9 @@ func (f additionEvaluator) EvaluateChoices(_ context.Context, state any, questio
 	answers := map[string]jevloop.ChoiceAnswer{}
 	for key, q := range questions {
 		choice := "0"
+		if key == "object_colors" {
+			choice = "none"
+		}
 		if !f.empty && key == "cherry_count" {
 			choice = "2"
 		}
@@ -57,6 +60,9 @@ func (largeWorldAdditionEvaluator) EvaluateChoices(_ context.Context, _ any, que
 			return jevloop.ChoiceResult{}, fmt.Errorf("question %q has fewer than two criteria", key)
 		}
 		choice := "0"
+		if key == "object_colors" {
+			choice = "none"
+		}
 		switch key {
 		case "boat_count":
 			choice = "3"

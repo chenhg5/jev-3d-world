@@ -462,6 +462,20 @@
     "description": "A passenger car / 汽车 / 轿车."
   },
   {
+    "type": "race_car",
+    "label": "赛车",
+    "group": "vehicle",
+    "height": 1.15,
+    "description": "A low racing car / race car / sports racing car / 赛车 with aerodynamic body and rear wing. Use this instead of passenger car when racing is explicit."
+  },
+  {
+    "type": "race_track",
+    "label": "赛道",
+    "group": "terrain",
+    "height": 0.25,
+    "description": "A complete closed motor racing circuit / race track / racetrack / 赛车跑道 / 赛道. Count the whole circuit as one object; cars may be placed on it."
+  },
+  {
     "type": "bus",
     "label": "公交车",
     "group": "vehicle",

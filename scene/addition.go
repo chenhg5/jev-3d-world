@@ -24,6 +24,14 @@ func ValidateCurrent(current *Spec) error {
 		if !known[item.Type] || item.Count < 1 || item.Count > 400 {
 			return fmt.Errorf("invalid current scene inventory")
 		}
+		if len(item.Colors) > item.Count {
+			return fmt.Errorf("invalid current scene colors")
+		}
+		for _, color := range item.Colors {
+			if !knownObjectColor(color) {
+				return fmt.Errorf("invalid current scene colors")
+			}
+		}
 		total += item.Count
 	}
 	if total >= 400 {
@@ -52,6 +60,10 @@ func (c Composer) ComposeAddition(ctx context.Context, request string, current S
 		"rule":             "Append only. Existing objects are already present and must not be recreated. Only select NEW additions from request. Objects mentioned solely as location references are not additions. Preserve existing environment, time of day and objects. Modification, deletion or time-of-day requests alone add nothing.",
 	}
 	questions := map[string]jevloop.ChoiceQuestion{}
+	questions["object_colors"] = jevloop.ChoiceQuestion{
+		Instructions: "Does `request` explicitly attach one or more colors to concrete NEW objects being added? A general mood or palette is not an object color.",
+		Criteria:     map[string]string{"none": "No new object has an explicit color.", "explicit": "At least one new object has a literal requested color."},
+	}
 	for _, asset := range assets {
 		questions[asset.name+"_count"] = jevloop.ChoiceQuestion{
 			Instructions: fmt.Sprintf("How many NEW %s objects does `request` ask to ADD to `existing_objects`? %s. Choose 0 if absent, excluded, only a location reference, or only being modified. Never repeat existing objects just because they appear in context. 'Add two' means 2 additional objects; 'make the total five' means max(0,5-existing count). A concrete requested quantity is exact, capped at 20. Unnumbered plural means 2 or 3. A broad requested addition may infer a few defining props, not an entire replacement scene.", asset.name, asset.description),
@@ -145,5 +157,20 @@ func (c Composer) ComposeAddition(ctx context.Context, request string, current S
 		kept = append(kept, *item)
 	}
 	delta.Objects = kept
+	colorMode := result.Answers["object_colors"].Choice
+	if colorMode != "none" && colorMode != "explicit" {
+		return Spec{}, fmt.Errorf("invalid addition object color mode")
+	}
+	if colorMode == "explicit" && len(delta.Objects) > 0 {
+		colored, calls, usage, confidence, err := c.applyObjectColors(ctx, state, delta.Objects)
+		if err != nil {
+			return Spec{}, err
+		}
+		delta.Objects = colored
+		delta.ModelCalls += calls
+		delta.InputTokens += usage.InputTokens
+		delta.OutputTokens += usage.OutputTokens
+		delta.Confidence = math.Min(delta.Confidence, confidence)
+	}
 	return delta, nil
 }

@@ -22,11 +22,12 @@ type Composer struct {
 }
 
 type ObjectSpec struct {
-	Type       string  `json:"type"`
-	Count      int     `json:"count"`
-	Placement  string  `json:"placement"`
-	Confidence float64 `json:"confidence"`
-	Anchor     string  `json:"anchor,omitempty"`
+	Type       string   `json:"type"`
+	Count      int      `json:"count"`
+	Placement  string   `json:"placement"`
+	Confidence float64  `json:"confidence"`
+	Anchor     string   `json:"anchor,omitempty"`
+	Colors     []string `json:"colors,omitempty"`
 }
 
 type AvatarSpec struct {
@@ -308,6 +309,24 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 			Confidence: math.Min(countAnswer.Confidence, placementAnswer.Confidence),
 		})
 	}
+	colorMode := answer("object_colors", false).Choice
+	if colorMode != "none" && colorMode != "explicit" {
+		return Spec{}, fmt.Errorf("invalid object color mode %q", colorMode)
+	}
+	if colorMode == "explicit" && len(spec.Objects) > 0 {
+		colored, calls, usage, confidence, err := c.applyObjectColors(ctx, map[string]any{
+			"request": request, "objects": spec.Objects,
+			"rule": "Preserve only colors explicitly attached to requested objects. Do not infer colors from the scene palette.",
+		}, spec.Objects)
+		if err != nil {
+			return Spec{}, err
+		}
+		spec.Objects = colored
+		spec.ModelCalls += calls
+		spec.InputTokens += usage.InputTokens
+		spec.OutputTokens += usage.OutputTokens
+		spec.Confidence = math.Min(spec.Confidence, confidence)
+	}
 	return spec, nil
 }
 
@@ -415,6 +434,13 @@ func cityQuestions() map[string]jevloop.ChoiceQuestion {
 
 func globalQuestions() map[string]jevloop.ChoiceQuestion {
 	return map[string]jevloop.ChoiceQuestion{
+		"object_colors": {
+			Instructions: "Does `request` explicitly attach one or more colors to concrete objects? Examples: 'one red car and one blue car' is explicit; a general mood or scene palette is not. This controls per-object instance colors.",
+			Criteria: map[string]string{
+				"none":     "No concrete object has an explicitly requested color.",
+				"explicit": "At least one requested object has a literal color such as red, blue, white, black or 金色.",
+			},
+		},
 		"avatar_jacket": {
 			Instructions: "Choose the explorer's jacket color to suit the setting, weather, lighting and mood in `request`. Prefer visibility against the environment while keeping a coherent outfit.",
 			Criteria:     avatarColorCriteria(),

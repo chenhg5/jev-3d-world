@@ -114,7 +114,7 @@ function deleteSceneItem(item) {
   world.traverse(child=>{if(child.material?.userData.waterTime)waterTimes.push(child.material.userData.waterTime);});
   const counts={};
   for (const entry of currentLayout.items.filter(entry=>entry.editable!==false)) counts[entry.type]=(counts[entry.type]??0)+1;
-  currentSpec={...currentSpec,objects:Object.entries(counts).map(([type,count])=>({type,count,placement:"auto"}))};
+  currentSpec={...currentSpec,objects:objectSpecsFromItems(currentLayout.items)};
   host.dataset.renderedCounts=JSON.stringify(counts);
   editor.setItems(currentLayout.items.filter(entry=>entry.editable!==false),currentSpec,landscape.heightAt,landscape.extent);
   updateSceneAfterEdit();
@@ -161,6 +161,17 @@ const environmentMap = {
   city: { ground: 0x66767c, background: 0xa1b7c4, fog: 0xa1b7c4 },
   garden: { ground: 0x647d55, background: 0xb4c6a6, fog: 0xb4c6a6 },
 };
+
+const objectColorHex={red:0xd94b43,blue:0x357bd1,green:0x3f9259,yellow:0xe4bd38,orange:0xe57d32,purple:0x7d55b3,pink:0xdc77a8,white:0xe9e8e2,black:0x202326,gray:0x858b8e,brown:0x805839,cyan:0x42b8c5};
+function styledColors(base,name){return objectColorHex[name]?{...base,object:objectColorHex[name]}:base;}
+function objectSpecsFromItems(items){
+  const grouped=new Map();
+  for(const item of items.filter(entry=>entry.editable!==false)){
+    if(!grouped.has(item.type))grouped.set(item.type,{type:item.type,count:0,placement:"auto",colors:[]});
+    const object=grouped.get(item.type);object.count++;object.colors.push(item.color||"auto");
+  }
+  return [...grouped.values()];
+}
 
 
 function seededRandom(seedText) {
@@ -292,7 +303,8 @@ function applyCamera(kind, random) {
     top_down: [0.1, 18, 0.1],
     eye_level: [12, 2.8, 10],
   };
-  const [baseX, baseY, baseZ] = positions[kind];
+  const circuit=currentLayout?.items?.some(item=>item.type==="race_track");
+  const [baseX, baseY, baseZ] = circuit?[9,14,17]:positions[kind];
   if (kind === "top_down") {
     camera.position.set((random() - 0.5) * 1.5, baseY + (random() - 0.5) * 2, (random() - 0.5) * 1.5);
   } else {
@@ -304,7 +316,7 @@ function applyCamera(kind, random) {
       (baseX * Math.sin(angle) + baseZ * Math.cos(angle)) * radiusScale,
     );
   }
-  camera.fov = kind === "cinematic" ? 38 : 42;
+  camera.fov = circuit?44:kind === "cinematic" ? 38 : 42;
   camera.updateProjectionMatrix();
   controls.target.set(0, kind === "top_down" ? 0 : 1.2, 0);
   fitAssets();
@@ -342,7 +354,8 @@ function prepareItems(spec, colors, random) {
     const definition = assetDefinition(objectSpec.type);
     if (!definition) throw new Error("Unsupported asset: " + objectSpec.type);
     for (let index = 0; index < objectSpec.count; index++) {
-      const model = createAsset(objectSpec.type, colors, random);
+      const color=objectSpec.colors?.[index]||"auto";
+      const model = createAsset(objectSpec.type, styledColors(colors,color), random);
       if (objectSpec.type === "pond" && spec.waterScale === "large") model.scale.set(1.8,1,1.8);
       // Buildings share street alignment; people face the viewing side.
       const facing = ["architecture","vehicle","decor","people"].includes(definition.group);
@@ -354,7 +367,7 @@ function prepareItems(spec, colors, random) {
       if (["tent","chair"].includes(objectSpec.type) || definition.group === "people") {
         const diameter = Math.hypot(size.x,size.z); size.x = diameter; size.z = diameter;
       }
-      prepared.push({ type: objectSpec.type, group: definition.group, model, index, count: objectSpec.count,
+      prepared.push({ type: objectSpec.type, group: definition.group, model, index, count: objectSpec.count,color,
         placement: objectSpec.placement, anchor: objectSpec.anchor, width:size.x, depth:size.z, height:size.y });
     }
   }
@@ -505,7 +518,14 @@ function updateSummary(spec) {
     spec.terrain,
     spec.atmosphere,
     ...(spec.moon && spec.moon !== "none" ? [spec.moon + " moon"] : []),
-    ...spec.objects.map((item) => item.count + "× " + assetLabel(item.type)),
+    ...spec.objects.map((item) => {
+      const colors=(item.colors||[]).filter(color=>color&&color!=="auto");
+      if(!colors.length)return item.count+"× "+assetLabel(item.type);
+      const counts=colors.reduce((all,color)=>(all[color]=(all[color]||0)+1,all),{});
+      const styled=Object.entries(counts).map(([color,count])=>count+"× "+color+" "+assetLabel(item.type));
+      const unstyled=item.count-colors.length;if(unstyled>0)styled.push(unstyled+"× "+assetLabel(item.type));
+      return styled.join(" + ");
+    }),
   ];
   for (const entry of entries) {
     const chip = document.createElement("span");
@@ -550,7 +570,7 @@ function appendScene(delta, promptText) {
     });
   }
   currentLayout.items.push(...additions);
-  currentSpec={...currentSpec,preview:false,objects:Object.entries(counts).map(([type,count])=>({type,count,placement:"auto"}))};
+  currentSpec={...currentSpec,preview:false,objects:objectSpecsFromItems(currentLayout.items)};
   previewMode=false;
   host.dataset.renderedCounts=JSON.stringify(counts);
   editor.setItems(currentLayout.items.filter(item=>item.editable!==false),currentSpec,landscape.heightAt,landscape.extent);

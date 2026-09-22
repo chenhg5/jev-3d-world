@@ -32,6 +32,7 @@ func (fakeEvaluator) EvaluateChoices(
 	answers["moon_request"] = jevloop.ChoiceAnswer{Choice: "unspecified", Confidence: 0.9}
 	answers["scenery"] = jevloop.ChoiceAnswer{Choice: "minimal", Confidence: 0.9}
 	answers["water_scale"] = jevloop.ChoiceAnswer{Choice: "small", Confidence: 0.9}
+	answers["object_colors"] = jevloop.ChoiceAnswer{Choice: "none", Confidence: 0.9}
 	answers["lighting"] = jevloop.ChoiceAnswer{Choice: "sunset", Confidence: 0.9}
 	answers["camera"] = jevloop.ChoiceAnswer{Choice: "isometric", Confidence: 0.9}
 	answers["composition"] = jevloop.ChoiceAnswer{Choice: "central", Confidence: 0.9}
@@ -44,6 +45,55 @@ func (fakeEvaluator) EvaluateChoices(
 	return jevloop.ChoiceResult{
 		Model: "test", Answers: answers, Usage: jevloop.Usage{InputTokens: 42},
 	}, nil
+}
+
+type coloredRaceEvaluator struct{}
+
+func (coloredRaceEvaluator) EvaluateChoices(ctx context.Context, state any, questions map[string]jevloop.ChoiceQuestion) (jevloop.ChoiceResult, error) {
+	result, err := (fakeEvaluator{}).EvaluateChoices(ctx, state, questions)
+	if _, ok := questions["object_colors"]; ok {
+		result.Answers["object_colors"] = jevloop.ChoiceAnswer{Choice: "explicit", Confidence: .98}
+	}
+	if _, ok := questions["race_car_count"]; ok {
+		result.Answers["race_car_count"] = jevloop.ChoiceAnswer{Choice: "2", Confidence: .98}
+		result.Answers["race_car_placement"] = jevloop.ChoiceAnswer{Choice: "around", Confidence: .9}
+	}
+	if _, ok := questions["race_track_count"]; ok {
+		result.Answers["race_track_count"] = jevloop.ChoiceAnswer{Choice: "1", Confidence: .98}
+		result.Answers["race_track_placement"] = jevloop.ChoiceAnswer{Choice: "center", Confidence: .9}
+	}
+	for key := range questions {
+		if strings.HasSuffix(key, "_color_count") {
+			choice := "0"
+			if key == "race_car_red_color_count" || key == "race_car_blue_color_count" {
+				choice = "1"
+			}
+			result.Answers[key] = jevloop.ChoiceAnswer{Choice: choice, Confidence: .96}
+		}
+	}
+	return result, err
+}
+
+func TestExplicitInstanceColorsAndRacingAssets(t *testing.T) {
+	spec, err := (Composer{Evaluator: coloredRaceEvaluator{}}).ComposeVariant(context.Background(), "两辆赛车，一辆蓝色，一辆红色，一个跑道", 12)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cars, track *ObjectSpec
+	for index := range spec.Objects {
+		if spec.Objects[index].Type == "race_car" {
+			cars = &spec.Objects[index]
+		}
+		if spec.Objects[index].Type == "race_track" {
+			track = &spec.Objects[index]
+		}
+	}
+	if cars == nil || cars.Count != 2 || track == nil || track.Count != 1 {
+		t.Fatalf("racing inventory was not preserved: %+v", spec.Objects)
+	}
+	if strings.Join(cars.Colors, ",") != "red,blue" {
+		t.Fatalf("instance colors were not preserved: %+v", cars)
+	}
 }
 
 type metropolisEvaluator struct{}

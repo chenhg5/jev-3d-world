@@ -136,6 +136,22 @@ function prepared(types){
     });
   });
 }
+test("race cars use explicit instance colors and occupy the racing circuit",()=>{
+  const blue=createAsset("race_car",{...colors,object:0x357bd1},rng(3));
+  const red=createAsset("race_car",{...colors,object:0xd94b43},rng(4));
+  const materialColors=model=>{const values=[];model.traverse(node=>{for(const entry of [node.material].flat().filter(Boolean))if(entry.color)values.push(entry.color.getHex());});return values;};
+  assert.ok(materialColors(blue).includes(0x357bd1));
+  assert.ok(materialColors(red).includes(0xd94b43));
+  const result=planLayout(prepared([["race_track",1],["race_car",2]]),{environment:"city"},rng(8));
+  const track=result.items.find(item=>item.type==="race_track"),cars=result.items.filter(item=>item.type==="race_car");
+  assert.equal(cars.length,2);assert.ok(track);
+  for(const car of cars){
+    const radius=Math.hypot(car.x-track.x,car.z-track.z);
+    assert.ok(radius<track.width/2&&radius>track.width*.2,"race car should sit on the circuit");
+    assert.ok(Number.isFinite(car.facing));
+  }
+  for(const model of [blue,red])model.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
+});
 test("mixed-scale city preserves every object and packs nonoverlapping footprints",()=>{
   const input=prepared([["building",8],["train",1],["station",1],["bicycle",5],["man",10],["tree",5],["bench",4]]);
   for(let seed=1;seed<=8;seed++){

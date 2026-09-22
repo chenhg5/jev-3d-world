@@ -6,8 +6,8 @@ locally. No text-generating LLM is required.
 
 ## Features
 
-- 112 procedural asset types: architecture, plants, terrain, people, animals,
-  vehicles, boats, playground equipment and more.
+- 114 procedural asset types: architecture, plants, terrain, people, animals,
+  vehicles, boats, racing circuits, playground equipment and more.
 - Hierarchical metropolis generation for downtown and open-world city prompts.
   Jev chooses an urban archetype, district pattern, road network, density,
   macro topology, green-space network, skyline, waterfront, civic space,
@@ -23,6 +23,8 @@ locally. No text-generating LLM is required.
 - English and Chinese prompts, with quantities from 0 to 20 per asset type.
 - Broad themes infer characteristic props; explicit inventories preserve named
   objects and counts. Model judgments can still make mistakes.
+- Explicit per-instance colors are preserved, including mixed inventories such
+  as one red race car and one blue race car.
 - Continuous terrain, distant hills, instanced grass and optional background
   woodland instead of a circular display base. Exact tree inventories suppress
   additional background trees.
@@ -87,6 +89,7 @@ A vast dinosaur reserve with a river valley, mixed dinosaur ecosystem, monumenta
 A northern fantasy medieval capital inside stone walls beneath a high citadel.
 A bright modern classroom with a central aisle, student desks and a teaching wall.
 A calm contemporary hospital ward with patient beds and a nurses station.
+两辆赛车，一辆蓝色，一辆红色，一个跑道
 出去外面露营的场景
 中秋节，但是是白天
 ```
@@ -99,9 +102,10 @@ A calm contemporary hospital ward with patient beds and a nurses station.
 2. Standard scenes use independent Choice questions to select environment, lighting, camera,
    composition, palette, terrain, atmosphere, moon phase, and asset quantities
    and placement preferences.
-3. Standard-scene questions are split into six bounded batches of at most 40 questions,
-   with up to three requests in flight. Including intent classification, a
-   composition uses seven API requests. The page reports their combined usage.
+3. Standard-scene questions are split into bounded batches of at most 40 questions,
+   with up to three requests in flight. Prompts that explicitly color concrete
+   objects use an additional bounded color pass to preserve per-instance colors.
+   The page reports the combined request count and usage.
    Large scene families skip the per-asset catalog and use one compact,
    family-specific planning batch after routing. Their planning cost stays at
    two Jev requests regardless of how many blocks, trees, animals or structures
@@ -199,7 +203,7 @@ npm --prefix web run build
 
 Tests use local fixtures and mock HTTP servers; they do not require an API key.
 Frontend tests cover model geometry, scale, activity layout, path obstruction,
-terrain, marine placement, sky colors, moon position, procedural music plans
+terrain, marine and racing placement, explicit colors, sky colors, moon position, procedural music plans
 and all hierarchical world generators. Go tests cover the client, routing,
 batching, counts and scene constraints.
 

@@ -5,7 +5,7 @@ import * as THREE from "three";
 export function createLibraryAsset(type, {colors, random, mesh, material}) {
   const g = new THREE.Group();
   const brown = colors.wood, leaf = colors.leaf, stone = colors.stone;
-  const cream = 0xe9dfc4, red = 0xb85f4b, dark = 0x364d52, glass = 0x8cc7cd;
+  const cream = 0xe9dfc4, red = colors.object ?? 0xb85f4b, dark = 0x364d52, glass = 0x8cc7cd;
   const add = (geo, color, x=0, y=0, z=0, options={}) => {
     const o=mesh(geo, material(color, options), x,y,z); g.add(o); return o;
   };
@@ -235,7 +235,17 @@ export function createLibraryAsset(type, {colors, random, mesh, material}) {
         if(type==="cafe"){cyl(.4,.4,.07,brown,1.5,.85,2);cyl(.04,.06,.8,dark,1.5,.4,2);bench(-.4,2);}
       }
     }
-  }else if(["car","bus","truck","tram","bicycle","motorcycle","airplane","helicopter","rocket","ufo"].includes(type)){
+  }else if(type==="race_track"){
+    const infield=cyl(2.65,2.65,.1,leaf,0,.05),road=add(new THREE.RingGeometry(2.55,4.2,48),dark,0,.13,0);
+    road.rotation.x=-Math.PI/2;infield.receiveShadow=true;road.receiveShadow=true;
+    for(let i=0;i<24;i++){
+      const a=i/24*Math.PI*2,r=3.37;
+      const mark=box(.42,.025,.08,cream,Math.cos(a)*r,.16,Math.sin(a)*r);mark.rotation.y=-a;
+    }
+    for(const r of [2.48,4.27]){
+      const barrier=add(new THREE.TorusGeometry(r,.055,6,48),r===2.48?cream:red,0,.2,0);barrier.rotation.x=Math.PI/2;
+    }
+  }else if(["car","race_car","bus","truck","tram","bicycle","motorcycle","airplane","helicopter","rocket","ufo"].includes(type)){
     if(type==="bicycle"||type==="motorcycle"){
       const motor=type==="motorcycle",r=motor?.35:.42;
       for(const x of [-.65,.65])wheelSpokes(x,r,0,r,dark);
@@ -269,6 +279,15 @@ export function createLibraryAsset(type, {colors, random, mesh, material}) {
       add(new THREE.SphereGeometry(.7,20,10,0,Math.PI*2,0,Math.PI/2),glass,0,.65,0);
       for(let i=0;i<10;i++){const a=i*.628;ball(.07,colors.accent,Math.cos(a)*1.4,.62,Math.sin(a)*1.4);}
       for(let i=0;i<3;i++){const a=i*2.094;rod([Math.cos(a)*.65,.6,Math.sin(a)*.65],[Math.cos(a)*.9,0,Math.sin(a)*.9],.045,dark);}
+    }else if(type==="race_car"){
+      const length=3.15,width=1.35;
+      box(length,.42,width,red,0,.5);box(1.45,.42,width*.86,glass,-.18,.88);
+      const nose=box(.8,.2,width*.92,red,1.62,.42);nose.rotation.z=-.08;
+      box(.16,.58,1.55,dark,-1.25,.92);box(.72,.08,1.72,red,-1.28,1.18);
+      for(const x of [-.92,.92])for(const z of [-width*.54,width*.54]){
+        const wheel=add(new THREE.CylinderGeometry(.32,.32,.2,12),dark,x,.34,z);wheel.rotation.x=Math.PI/2;
+      }
+      for(const z of [-.42,.42])box(.08,.12,.18,0xf9dfa7,length/2+.03,.48,z);
     }else{
       const long=type!=="car",length=long?4:2.7,width=1.2;
       box(length,.6,width,type==="bus"?0xcaaa5f:type==="tram"?0x5d978d:red,0,.65);
