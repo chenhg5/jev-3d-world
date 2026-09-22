@@ -214,9 +214,10 @@ func globalQuestions() map[string]jevloop.ChoiceQuestion {
 			Criteria:     avatarColorCriteria(),
 		},
 		"avatar_accessory": {
-			Instructions: "Which single wearable accessory best fits an explorer inside the scene described by `request`? Choose a practical or thematic option.",
+			Instructions: "Which single wearable accessory best fits an explorer inside the scene described by `request`? Do not default to a backpack. Choose none for ordinary scenes without a practical or thematic reason for an accessory.",
 			Criteria: map[string]string{
-				"backpack": "An outdoor backpack, useful for travel, camping and expeditions.",
+				"none":     "No accessory; best for ordinary scenes where special travel, weather or activity gear is unnecessary.",
+				"backpack": "An outdoor backpack, only when travel, camping, hiking or an expedition makes carried gear useful.",
 				"scarf":    "A neck scarf for cold, windy, festive or elegant settings.",
 				"cap":      "A simple brimmed cap for sunny, urban or casual settings.",
 				"satchel":  "A compact side satchel for town, garden, school or everyday scenes.",

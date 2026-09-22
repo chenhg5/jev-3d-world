@@ -8,25 +8,25 @@ const avatarColors = {
   ice: 0xa9d4df, violet: 0x71518c, charcoal: 0x30363d, cream: 0xe8ddc5, sand: 0xc6a26a,
 };
 const paletteOutfits = {
-  natural: {jacket:"ember", trousers:"charcoal", accessory:"backpack", accessoryColor:"moss"},
+  natural: {jacket:"ember", trousers:"charcoal", accessory:"none", accessoryColor:"moss"},
   autumn: {jacket:"ochre", trousers:"charcoal", accessory:"scarf", accessoryColor:"ember"},
   winter: {jacket:"ice", trousers:"ocean", accessory:"scarf", accessoryColor:"cream"},
   desert: {jacket:"sand", trousers:"charcoal", accessory:"cap", accessoryColor:"ochre"},
   mystic: {jacket:"violet", trousers:"charcoal", accessory:"satchel", accessoryColor:"ice"},
-  mono: {jacket:"cream", trousers:"charcoal", accessory:"satchel", accessoryColor:"ocean"},
+  mono: {jacket:"cream", trousers:"charcoal", accessory:"none", accessoryColor:"ocean"},
 };
 
 export function resolveAvatarStyle(spec = {}) {
   const variant = Number(spec.variant) || 0;
   const fallback = paletteOutfits[spec.palette] || paletteOutfits.natural;
-  const accessoryFallbacks = [fallback.accessory, "backpack", "scarf", "cap", "satchel"];
+  const accessoryFallbacks = [...new Set([fallback.accessory, "none", "scarf", "cap", "satchel", "backpack"])];
   const style = spec.avatar || {};
   const validColor = value => avatarColors[value] ? value : null;
-  const validAccessory = value => ["backpack", "scarf", "cap", "satchel"].includes(value) ? value : null;
+  const validAccessory = value => ["none", "backpack", "scarf", "cap", "satchel"].includes(value) ? value : null;
   return {
     jacket: validColor(style.jacket) || fallback.jacket,
     trousers: validColor(style.trousers) || fallback.trousers,
-    accessory: validAccessory(style.accessory) || accessoryFallbacks[variant % accessoryFallbacks.length],
+    accessory: validAccessory(style.accessory) || accessoryFallbacks[Math.max(0, variant - 1) % accessoryFallbacks.length],
     accessoryColor: validColor(style.accessoryColor) || fallback.accessoryColor,
     skin: [0x8d5524, 0xc68642, 0xe0ac69, 0xf1c27d][variant % 4],
     hair: [0x171310, 0x35231a, 0x603b26, 0x241d1a][Math.floor(variant / 4) % 4],
@@ -130,6 +130,24 @@ export function createPlayerAvatar() {
   part(new THREE.SphereGeometry(.255, 12, 9), skin, rig, [0, 1.82, 0]);
   const hairMesh = part(new THREE.SphereGeometry(.264, 12, 7, 0, Math.PI * 2, 0, Math.PI * .57), hair, rig, [0, 1.88, .005]);
   hairMesh.scale.z = 1.02;
+  const eyeWhite = standardMaterial(0xf5f1e7, .7);
+  const eyeDark = standardMaterial(0x191818, .68);
+  for (const x of [-.085, .085]) {
+    const white = part(new THREE.SphereGeometry(.052, 8, 6), eyeWhite, rig, [x, 1.85, -.225]);
+    white.name = "avatar-eye";
+    white.scale.z = .38;
+    const pupil = part(new THREE.SphereGeometry(.024, 7, 5), eyeDark, rig, [x, 1.85, -.269]);
+    pupil.name = "avatar-pupil";
+    pupil.scale.z = .32;
+    const brow = part(new THREE.BoxGeometry(.09, .018, .018), hair, rig, [x, 1.925, -.226]);
+    brow.name = "avatar-brow";
+    brow.rotation.z = x < 0 ? -.1 : .1;
+  }
+  const nose = part(new THREE.ConeGeometry(.038, .09, 6), skin, rig, [0, 1.79, -.255]);
+  nose.name = "avatar-nose";
+  nose.rotation.x = -Math.PI / 2;
+  const mouth = part(new THREE.BoxGeometry(.115, .018, .018), eyeDark, rig, [0, 1.715, -.245]);
+  mouth.name = "avatar-mouth";
 
   const leftArm = makeLimb({x: .37, y: 1.48, material: jacket});
   const rightArm = makeLimb({x: -.37, y: 1.48, material: jacket});

@@ -241,6 +241,10 @@ test("first-person spawn finds open ground and scene collision respects solid gr
   assert.equal(avatar.name,"explorer-avatar");
   assert.ok(avatar.userData.rig.leftLeg.userData.joint);
   assert.ok(avatar.userData.rig.rightArm.userData.joint);
+  assert.equal(avatar.getObjectsByProperty("name","avatar-eye").length,2);
+  assert.equal(avatar.getObjectsByProperty("name","avatar-pupil").length,2);
+  assert.equal(avatar.getObjectsByProperty("name","avatar-nose").length,1);
+  assert.equal(avatar.getObjectsByProperty("name","avatar-mouth").length,1);
   const style=applyAvatarStyle(avatar,{variant:9,palette:"winter",avatar:{jacket:"violet",trousers:"ice",accessory:"scarf",accessoryColor:"cream"}});
   assert.deepEqual({jacket:style.jacket,trousers:style.trousers,accessory:style.accessory,accessoryColor:style.accessoryColor},
     {jacket:"violet",trousers:"ice",accessory:"scarf",accessoryColor:"cream"});
@@ -248,5 +252,5 @@ test("first-person spawn finds open ground and scene collision respects solid gr
   assert.equal(avatar.userData.outfit.accessories.backpack.visible,false);
   const fallback=resolveAvatarStyle({variant:2,palette:"desert"});
   assert.equal(fallback.jacket,"sand");
-  assert.ok(["backpack","scarf","cap","satchel"].includes(fallback.accessory));
+  assert.ok(["none","backpack","scarf","cap","satchel"].includes(fallback.accessory));
 });
