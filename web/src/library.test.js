@@ -215,3 +215,38 @@ test("floating toolbar stays near the object and within desktop and phone viewpo
     }
   }
 });
+
+test("first-person spawn finds open ground and scene collision respects solid groups",async()=>{
+  const {findPlayerSpawn,collidesWithScene,normalizeControlCode,createPlayerAvatar,nextExploreView,resolveAvatarStyle,applyAvatarStyle,isExploreCheckpointUsable}=await import("./explore.js");
+  const items=[
+    {type:"tent",group:"camp",x:0,z:3,width:5,depth:5},
+    {type:"tree",group:"flora",x:4,z:2,width:2,depth:2},
+    {type:"person",group:"people",x:-4,z:2,width:1,depth:1},
+  ];
+  const spawn=findPlayerSpawn({items,landRadius:14},(x,z)=>x*.01+z*.02);
+  assert.ok(Math.hypot(spawn.x,spawn.z)<14*.85);
+  assert.equal(collidesWithScene(spawn.x,spawn.z,items,.52),false);
+  assert.equal(spawn.y,spawn.x*.01+spawn.z*.02);
+  assert.equal(collidesWithScene(0,3,items),true);
+  assert.equal(collidesWithScene(-4,2,items),false,"people should not create invisible walls");
+  assert.equal(isExploreCheckpointUsable({x:-4,z:5,yaw:1,pitch:.1},{layout:{items,landRadius:14}}),true);
+  assert.equal(isExploreCheckpointUsable({x:0,z:3,yaw:1,pitch:.1},{layout:{items,landRadius:14}}),false);
+  assert.equal(isExploreCheckpointUsable({x:30,z:3,yaw:1,pitch:.1},{layout:{items,landRadius:14}}),false);
+  assert.equal(normalizeControlCode({code:"ArrowUp"}),"KeyW");
+  assert.equal(normalizeControlCode({code:"ArrowLeft"}),"KeyA");
+  assert.equal(normalizeControlCode({key:"ArrowDown"}),"KeyS");
+  assert.equal(normalizeControlCode({key:"ArrowRight"}),"KeyD");
+  assert.deepEqual([nextExploreView("third"),nextExploreView("first"),nextExploreView("overview")],["first","overview","third"]);
+  const avatar=createPlayerAvatar();
+  assert.equal(avatar.name,"explorer-avatar");
+  assert.ok(avatar.userData.rig.leftLeg.userData.joint);
+  assert.ok(avatar.userData.rig.rightArm.userData.joint);
+  const style=applyAvatarStyle(avatar,{variant:9,palette:"winter",avatar:{jacket:"violet",trousers:"ice",accessory:"scarf",accessoryColor:"cream"}});
+  assert.deepEqual({jacket:style.jacket,trousers:style.trousers,accessory:style.accessory,accessoryColor:style.accessoryColor},
+    {jacket:"violet",trousers:"ice",accessory:"scarf",accessoryColor:"cream"});
+  assert.equal(avatar.userData.outfit.accessories.scarf.visible,true);
+  assert.equal(avatar.userData.outfit.accessories.backpack.visible,false);
+  const fallback=resolveAvatarStyle({variant:2,palette:"desert"});
+  assert.equal(fallback.jacket,"sand");
+  assert.ok(["backpack","scarf","cap","satchel"].includes(fallback.accessory));
+});

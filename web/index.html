@@ -43,11 +43,26 @@
           <button type="button" data-view="cinematic">Landscape</button>
           <button type="button" data-view="isometric">Overview</button>
           <button type="button" data-view="reset">Reset view</button>
+          <button type="button" id="explore-scene" aria-pressed="false">Explore</button>
+        </div>
+        <div id="explore-hud" class="explore-hud" hidden>
+          <div class="explore-help">
+            <strong>EXPLORE MODE · <span data-view-label>Third person</span></strong>
+            <span>WASD / Arrows move · Mouse look · Space jump · Shift run</span>
+            <span class="view-shortcut">V switch view · Third → First → Overview</span>
+          </div>
+          <div class="explore-actions">
+            <button type="button" data-view-toggle>Third person · V</button>
+            <button type="button" data-explore-exit>Exit · Esc</button>
+          </div>
         </div>
         <div id="selection-panel" class="selection-panel" role="group" aria-label="Selected object controls" hidden>
           <div class="selection-heading">
             <strong id="selected-name" aria-live="polite"></strong>
             <button type="button" id="reset-position" aria-label="Reset object" title="Reset object">↺</button>
+            <button type="button" id="delete-object" aria-label="Delete object" title="Delete object · Delete / Backspace">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>
+            </button>
             <button type="button" id="deselect-object" aria-label="Deselect object" title="Deselect · Esc">×</button>
           </div>
           <div class="quick-transforms" role="group" aria-label="Size and rotation">

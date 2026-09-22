@@ -108,9 +108,30 @@ the viewport edges. **Fine tune** reveals the **Size** (25–400%) and
 **Rotation** (0–359°) sliders.
 Scaling keeps the object grounded and updates its collision footprint.
 **Reset object** restores its generated position, size and orientation, and Escape cancels
-an active drag or clears the selection. Walking paths are recalculated on drop.
+an active drag or clears the selection. The toolbar's **Delete object** button
+removes the selected asset; Delete / Backspace also works while the canvas or
+toolbar is focused. Text inputs keep their normal editing behavior. Deletion
+updates the inventory and paths used by later additions without moving other
+objects. Walking paths are also recalculated on drop.
 These edits stay in the current scene only: refreshing or generating a new scene
 clears them. Background terrain and decorative forest are not selectable.
+
+## Exploring in game mode
+
+After composing a scene, choose **Explore** above the viewport. The scene expands
+to the full browser window and captures the mouse. Use **WASD** or the **arrow
+keys** to walk, the mouse to look, **Space** to jump and **Shift** to run. Press
+**V** to cycle through third-person, first-person and elevated overview cameras;
+exploration starts in third person. Third-person and overview modes show an
+explorer with animated walking, running and jumping poses. Jev also chooses the
+explorer's jacket, trousers, accessory and accent color to fit each newly
+composed scene; local and legacy scenes get a stable palette-based fallback.
+Press **Esc** to release the mouse and return to scene editing. Re-entering
+Explore in the same scene resumes the last position, direction and camera view;
+composing a new scene starts from a fresh safe spawn. The player follows the generated
+terrain, cannot climb abrupt shorelines, and collides with foreground buildings,
+plants, vehicles, terrain props and furniture. Decorative background scenery
+remains visual only.
 
 ## Adding to an existing scene
 

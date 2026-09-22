@@ -93,6 +93,9 @@ func TestComposeBuildsFiniteSceneSpec(t *testing.T) {
 	if spec.Objects[0].Type != "tent" || spec.Objects[0].Count != 2 || spec.InputTokens != 42*spec.ModelCalls {
 		t.Fatalf("unexpected object: %#v", spec.Objects[0])
 	}
+	if spec.Avatar.Jacket == "" || spec.Avatar.Trousers == "" || spec.Avatar.Accessory == "" || spec.Avatar.AccessoryColor == "" {
+		t.Fatalf("expected a complete Jev-selected avatar outfit: %#v", spec.Avatar)
+	}
 }
 
 type skyEvaluator struct{ lighting, moonRequest, phase string }

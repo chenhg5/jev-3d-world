@@ -48,6 +48,8 @@ button {
 .view-controls { position:absolute; z-index:3; right:28px; top:74px; display:flex; gap:5px; padding:5px; background:#17252688; backdrop-filter:blur(14px); border:1px solid #ffffff20; border-radius:22px; }
 .view-controls button { border:0; border-radius:16px; padding:7px 12px; background:transparent; font-size:11px; cursor:pointer; }
 .view-controls button:hover,.view-controls button:focus-visible { background:#ffffff24; }
+.view-controls #explore-scene { color:#cfffaa; }
+.view-controls #explore-scene[aria-pressed="true"] { background:#b7ff8b2b; }
 @media(max-width:600px) { .view-controls { top:80px; right:14px; } .scene-hint { display:none; } }
 
 #canvas-host,
@@ -449,6 +451,24 @@ button {
 #canvas-host canvas.can-move { cursor: grab; }
 #canvas-host canvas.is-moving { cursor: grabbing; }
 #canvas-host canvas:focus-visible { outline: 2px solid var(--accent, #c5ff91); outline-offset: -2px; }
+
+body.exploring-scene { overflow: hidden; }
+.stage.exploring { position: fixed; inset: 0; z-index: 100; width: 100vw; height: 100vh; min-height: 0; border: 0; }
+.stage.exploring #canvas-host canvas { cursor: none; }
+.stage.exploring .topbar,
+.stage.exploring .scene-caption,
+.stage.exploring .scene-hint,
+.stage.exploring .view-controls,
+.stage.exploring .selection-panel { display: none; }
+.explore-hud { position:absolute; inset:0; z-index:8; pointer-events:none; }
+.explore-hud[hidden] { display:none; }
+.explore-help { position:absolute; left:24px; bottom:22px; display:flex; flex-direction:column; gap:5px; padding:11px 14px; border:1px solid #ffffff24; border-radius:9px; background:#07100db5; backdrop-filter:blur(10px); }
+.explore-help strong { color:#bfff91; font:10px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em; }
+.explore-help span { color:#ffffffa8; font-size:11px; }
+.explore-help .view-shortcut { color:#cfffaa; }
+.explore-actions { position:absolute; right:24px; top:22px; display:flex; gap:8px; pointer-events:auto; }
+.explore-hud button { border:1px solid #ffffff2b; border-radius:18px; padding:8px 13px; background:#07100dbd; color:#eaf0e8; font-size:11px; cursor:pointer; }
+.explore-hud button[data-view-toggle] { color:#cfffaa; }
 /* Screen-space toolbar anchored to the selected object's projected bounds. */
 .selection-panel {
   position: absolute; z-index: 4; left: 0; top: 0; width: 290px;
@@ -473,6 +493,8 @@ button {
 .selection-panel button:active { background: #c5ff9140; }
 .selection-panel button:focus-visible { outline: 2px solid #c5ff91; outline-offset: 2px; }
 .selection-panel button:disabled { opacity: .3; cursor: default; }
+.selection-heading #delete-object { color: #eeaa9d; }
+.selection-heading #delete-object:hover { background: #f1705c30; color: #ffc5b7; }
 .quick-transforms { display: flex; align-items: center; justify-content: space-between; gap: 3px; }
 .quick-transforms output { min-width: 38px; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; }
 .tool-divider { width: 1px; height: 22px; background: #ffffff20; margin: 0 3px; }

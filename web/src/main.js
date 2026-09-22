@@ -9,6 +9,7 @@ import { planLayout, appendLayout } from "./layout.js";
 import { createLandscape, objectElevation, refreshPaths } from "./landscape.js";
 import { skyColor, createSky, createMoon, positionMoon, faceMoon } from "./sky.js";
 import { createSceneEditor } from "./editing.js";
+import { createExplorer } from "./explore.js";
 import "./style.css";
 
 const host = document.querySelector("#canvas-host");
@@ -67,11 +68,57 @@ const editor = createSceneEditor({
   label: document.querySelector("#selected-name"),
   reset: document.querySelector("#reset-position"),
   dismiss: document.querySelector("#deselect-object"),
+  remove: document.querySelector("#delete-object"),
   scaleInput: document.querySelector("#object-scale"),
   rotationInput: document.querySelector("#object-rotation"),
   onSelect(item) { host.dataset.selectedAsset = item?.model.name || ""; },
   onChange: updateSceneAfterEdit,
+  onDelete: deleteSceneItem,
 });
+
+const explorer = createExplorer({
+  canvas: renderer.domElement, camera, controls, scene,
+  stage: document.querySelector(".stage"),
+  hud: document.querySelector("#explore-hud"),
+  button: document.querySelector("#explore-scene"),
+  getWorld: () => ({layout:currentLayout,landscape,spec:currentSpec}),
+  onActiveChange(value) {
+    editor.setEnabled(!value);
+    document.body.classList.toggle("exploring-scene",value);
+    requestAnimationFrame(resize);
+  },
+  onStatus: setStatus,
+});
+
+function deleteSceneItem(item) {
+  if (!currentLayout?.items.includes(item)) return;
+  currentLayout.items=currentLayout.items.filter(entry=>entry!==item);
+  const removed=new Set(), disposedGeometry=new Set(), disposedMaterial=new Set();
+  for (const root of [item.model,item.pool].filter(Boolean)) {
+    root.removeFromParent();
+    root.traverse(child=>{
+      removed.add(child);
+      if (child.isLight || child.isInstancedMesh) child.dispose?.();
+      if (child.geometry && !disposedGeometry.has(child.geometry)) {
+        disposedGeometry.add(child.geometry);child.geometry.dispose();
+      }
+      for (const mat of [child.material].flat().filter(Boolean)) {
+        if (!disposedMaterial.has(mat)) { disposedMaterial.add(mat);mat.dispose(); }
+      }
+    });
+  }
+  animated=animated.filter(child=>!removed.has(child));
+  waterTimes=[];
+  world.traverse(child=>{if(child.material?.userData.waterTime)waterTimes.push(child.material.userData.waterTime);});
+  const counts={};
+  for (const entry of currentLayout.items) counts[entry.type]=(counts[entry.type]??0)+1;
+  currentSpec={...currentSpec,objects:Object.entries(counts).map(([type,count])=>({type,count,placement:"auto"}))};
+  host.dataset.renderedCounts=JSON.stringify(counts);
+  editor.setItems(currentLayout.items,currentSpec,landscape.heightAt,landscape.extent);
+  updateSceneAfterEdit();
+  updateSummary(currentSpec);
+  setStatus("Deleted "+item.label+" · "+currentLayout.items.length+" objects remaining");
+}
 
 function updateSceneAfterEdit() {
     if (!currentLayout || !landscape) return;
@@ -290,6 +337,7 @@ function prepareItems(spec, colors, random) {
 }
 
 function renderScene(spec, promptText) {
+  explorer.reset();
   disposeWorld();
   previewMode = !!spec.preview;
   currentSpec = spec;
@@ -405,9 +453,12 @@ function appendScene(delta, promptText) {
     throw error;
   }
   const counts = JSON.parse(host.dataset.renderedCounts);
+  const nextIndex={};
+  for (const item of currentLayout.items) nextIndex[item.type]=Math.max(nextIndex[item.type]??0,item.index+1);
   for (const item of additions) {
     const {model,type,x,z}=item;
-    item.index=counts[type]??0;
+    item.index=nextIndex[type]??0;
+    nextIndex[type]=item.index+1;
     counts[type]=(counts[type]??0)+1;
     model.name=type+"-"+item.index;
     item.label=assetLabel(type)+" · "+(item.index+1);
@@ -562,14 +613,19 @@ function resize() {
   effects.setSize(width, height);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  fitAssets();
-  controls.update();
+  if (!explorer.active) {
+    fitAssets();
+    controls.update();
+  }
 }
 
 window.addEventListener("resize", resize);
 const animationStarted = performance.now();
+let previousFrame = animationStarted;
 function animate(timestamp = performance.now()) {
   const elapsed = (timestamp - animationStarted) / 1000;
+  const delta = Math.min(.05, Math.max(0, timestamp - previousFrame) / 1000);
+  previousFrame = timestamp;
   for (const object of animated) {
     if (object.userData.flame) {
       object.scale.y = 0.9 + Math.sin(elapsed * 8) * 0.11;
@@ -582,8 +638,9 @@ function animate(timestamp = performance.now()) {
     if (object.userData.spin) object.rotation.z -= 0.008;
     if (object.userData.rotor) object.rotation.y += 0.08;
   }
-  if (!editor.dragging) controls.update();
-  editor.update();
+  explorer.update(delta);
+  if (!explorer.active && !editor.dragging) controls.update();
+  if (!explorer.active) editor.update();
   for (const time of waterTimes) time.value = elapsed;
   faceMoon(skyMoon, camera);
   effects.render();

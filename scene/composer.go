@@ -29,6 +29,13 @@ type ObjectSpec struct {
 	Anchor     string  `json:"anchor,omitempty"`
 }
 
+type AvatarSpec struct {
+	Jacket         string `json:"jacket"`
+	Trousers       string `json:"trousers"`
+	Accessory      string `json:"accessory"`
+	AccessoryColor string `json:"accessoryColor"`
+}
+
 type Spec struct {
 	Variant      uint32       `json:"variant"`
 	Environment  string       `json:"environment"`
@@ -41,6 +48,7 @@ type Spec struct {
 	Moon         string       `json:"moon"`
 	Scenery      bool         `json:"scenery"`
 	WaterScale   string       `json:"waterScale"`
+	Avatar       AvatarSpec   `json:"avatar"`
 	Objects      []ObjectSpec `json:"objects"`
 	Model        string       `json:"model"`
 	ModelCalls   int          `json:"modelCalls"`
@@ -139,17 +147,23 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		return value
 	}
 	spec := Spec{
-		Variant:      variant,
-		Environment:  answer("environment", false).Choice,
-		Lighting:     answer("lighting", false).Choice,
-		Camera:       answer("camera", true).Choice,
-		Composition:  answer("composition", true).Choice,
-		Palette:      answer("palette", true).Choice,
-		Terrain:      answer("terrain", true).Choice,
-		Atmosphere:   answer("atmosphere", true).Choice,
-		Moon:         answer("moon", false).Choice,
-		Scenery:      intent.Answers["scenery"].Choice == "natural",
-		WaterScale:   answer("water_scale", false).Choice,
+		Variant:     variant,
+		Environment: answer("environment", false).Choice,
+		Lighting:    answer("lighting", false).Choice,
+		Camera:      answer("camera", true).Choice,
+		Composition: answer("composition", true).Choice,
+		Palette:     answer("palette", true).Choice,
+		Terrain:     answer("terrain", true).Choice,
+		Atmosphere:  answer("atmosphere", true).Choice,
+		Moon:        answer("moon", false).Choice,
+		Scenery:     intent.Answers["scenery"].Choice == "natural",
+		WaterScale:  answer("water_scale", false).Choice,
+		Avatar: AvatarSpec{
+			Jacket:         answer("avatar_jacket", true).Choice,
+			Trousers:       answer("avatar_trousers", true).Choice,
+			Accessory:      answer("avatar_accessory", true).Choice,
+			AccessoryColor: answer("avatar_accessory_color", true).Choice,
+		},
 		Model:        result.Model,
 		ModelCalls:   modelCalls + 1,
 		InputTokens:  result.Usage.InputTokens + intent.Usage.InputTokens,
@@ -187,6 +201,27 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 
 func globalQuestions() map[string]jevloop.ChoiceQuestion {
 	return map[string]jevloop.ChoiceQuestion{
+		"avatar_jacket": {
+			Instructions: "Choose the explorer's jacket color to suit the setting, weather, lighting and mood in `request`. Prefer visibility against the environment while keeping a coherent outfit.",
+			Criteria:     avatarColorCriteria(),
+		},
+		"avatar_trousers": {
+			Instructions: "Choose the explorer's trouser color to suit `request` and coordinate with the jacket. Prefer a practical, contrasting lower-body color.",
+			Criteria:     avatarColorCriteria(),
+		},
+		"avatar_accessory_color": {
+			Instructions: "Choose an accent color for the explorer's accessory that coordinates with the scene and outfit in `request`.",
+			Criteria:     avatarColorCriteria(),
+		},
+		"avatar_accessory": {
+			Instructions: "Which single wearable accessory best fits an explorer inside the scene described by `request`? Choose a practical or thematic option.",
+			Criteria: map[string]string{
+				"backpack": "An outdoor backpack, useful for travel, camping and expeditions.",
+				"scarf":    "A neck scarf for cold, windy, festive or elegant settings.",
+				"cap":      "A simple brimmed cap for sunny, urban or casual settings.",
+				"satchel":  "A compact side satchel for town, garden, school or everyday scenes.",
+			},
+		},
 		"water_scale": {
 			Instructions: "If a pond or lake is present, what water-body size fits `request`?",
 			Criteria:     map[string]string{"small": "Garden pond, small pool, or no stated lake.", "large": "Lake, lakeside retreat / 湖泊 / 湖畔: a broad body of water."},
@@ -264,6 +299,16 @@ func globalQuestions() map[string]jevloop.ChoiceQuestion {
 				"embers":    "Sparse orange drifting sparks or dust motes.",
 			},
 		},
+	}
+}
+
+func avatarColorCriteria() map[string]string {
+	return map[string]string{
+		"ember": "Warm burnt orange-red.", "ochre": "Golden mustard yellow.",
+		"moss": "Deep natural forest green.", "ocean": "Clear medium blue.",
+		"ice": "Pale cool blue.", "violet": "Rich muted purple.",
+		"charcoal": "Dark neutral graphite.", "cream": "Warm off-white.",
+		"sand": "Light earthy tan.",
 	}
 }
 

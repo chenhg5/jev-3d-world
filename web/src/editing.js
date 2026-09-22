@@ -38,7 +38,7 @@ export function toolbarPosition(bounds, viewport, size) {
   };
 }
 
-export function createSceneEditor({ canvas, camera, controls, scene, panel, label, reset, dismiss, scaleInput, rotationInput, onChange, onSelect }) {
+export function createSceneEditor({ canvas, camera, controls, scene, panel, label, reset, dismiss, remove, scaleInput, rotationInput, onChange, onSelect, onDelete }) {
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const outline = new THREE.BoxHelper(undefined, 0xc5ff91);
@@ -118,6 +118,7 @@ export function createSceneEditor({ canvas, camera, controls, scene, panel, labe
     panelPosition = null;
     selected = item;
     outline.visible = !!item;
+    if (!item) outline.object = undefined;
     panel.hidden = !item;
     if (item) {
       label.textContent = item.label;
@@ -192,7 +193,26 @@ export function createSceneEditor({ canvas, camera, controls, scene, panel, labe
   window.addEventListener("blur", () => { finish(true); stopHold(); });
   window.addEventListener("keydown", event => {
     if (event.key === "Escape") { finish(true); select(null); }
+    const target=event.target;
+    if (["Delete","Backspace"].includes(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey &&
+        target instanceof Element && (target===canvas || panel.contains(target)) &&
+        !target.matches("input,textarea,select") && !target.isContentEditable && enabled && selected) {
+      event.preventDefault();
+      deleteSelected();
+    }
   });
+  function deleteSelected() {
+    if (!enabled || !selected) return;
+    finish(true);
+    const item=selected;
+    select(null);
+    items=items.filter(entry=>entry!==item);
+    roots.delete(item.model);
+    canvas.classList.remove("can-move");
+    onDelete(item);
+    canvas.focus({preventScroll:true});
+  }
+  remove.addEventListener("click",deleteSelected);
   canvas.tabIndex = 0;
   canvas.setAttribute("aria-label", "3D scene. Drag an object to move it. Drag empty space to orbit. Use arrow keys to move the selected object.");
   canvas.addEventListener("keydown", event => {
