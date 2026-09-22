@@ -12,6 +12,9 @@ locally. No text-generating LLM is required.
   Jev chooses an urban archetype, district pattern, road network, density,
   skyline, waterfront, civic space, traffic and landmark; the browser expands
   that compact plan into dozens or hundreds of navigable buildings.
+- A scene-family router for other large worlds. Ocean liners, prehistoric
+  reserves and medieval fortified cities each have their own bounded Jev
+  questions and spatial grammar instead of sharing a city template.
 - English and Chinese prompts, with quantities from 0 to 20 per asset type.
 - Broad themes infer characteristic props; explicit inventories preserve named
   objects and counts. Model judgments can still make mistakes.
@@ -72,35 +75,42 @@ A bright pastoral village with a windmill, a pond, outdoor tables and five trees
 An island with three palm trees, a lighthouse and two sailboats.
 A vast Shenzhen-inspired coastal technology metropolis with landscaped superblocks, twin skyline clusters and a harbor promenade.
 A large New York-inspired downtown with a tight street grid, dense blocks, a central park and a single-core skyline.
+A Titanic-inspired grand ocean liner with four funnels, layered passenger decks and rows of lifeboats.
+A vast dinosaur reserve with a river valley, mixed dinosaur ecosystem, monumental park gate and distant mountains.
+A northern fantasy medieval capital inside stone walls beneath a high citadel.
 出去外面露营的场景
 中秋节，但是是白天
 ```
 
 ## How it works
 
-1. The Go server asks Jev to classify the request as a standard composition or
-   a large metropolis, as well as a theme, inventory or empty landscape.
+1. The Go server asks Jev to route the request to a standard composition,
+   metropolis, ocean liner, prehistoric world or medieval city. It separately
+   recognizes a theme, inventory or empty landscape.
 2. Standard scenes use independent Choice questions to select environment, lighting, camera,
    composition, palette, terrain, atmosphere, moon phase, and asset quantities
    and placement preferences.
 3. Standard-scene questions are split into six bounded batches of at most 40 questions,
    with up to three requests in flight. Including intent classification, a
    composition uses seven API requests. The page reports their combined usage.
-   Metropolis scenes skip the per-asset catalog and use one compact city-plan
-   batch after intent classification, so their planning cost stays at two Jev
-   requests regardless of how many blocks are generated.
+   Large scene families skip the per-asset catalog and use one compact,
+   family-specific planning batch after routing. Their planning cost stays at
+   two Jev requests regardless of how many blocks, trees, animals or structures
+   code generates.
 4. The server validates the offered choices and reconciles moon visibility with
    explicit instructions and time of day.
-5. For a metropolis, the browser divides the world into functional districts,
-   lays out blocks and streets, shapes the skyline, adds traffic, public space,
-   greenery and water, and registers building footprints for Explore collisions.
+5. Each large scene family has a separate generator. Metropolises divide into
+   functional districts and road networks; liners build a hull, layered decks,
+   funnels and lifeboats; prehistoric worlds reserve visible animal habitats
+   inside forest and terrain layers; medieval cities pack homes inside walls
+   beneath a citadel. Generated structures register footprints for Explore.
    For a standard scene, it builds the models, normalizes their scale, packs the activity
    areas, routes paths around obstacles and builds the surrounding terrain.
    The moon has a fixed position above the scene.
 
 The world uses a finite terrain patch with distant fog rather than infinite
-streaming terrain. Large cities are semantic procedural interpretations, not
-geospatially accurate replicas of real cities. Water uses stylized animated
+streaming terrain. Named places and stories are semantic procedural
+interpretations rather than exact replicas. Water uses stylized animated
 highlights rather than physical reflections. Paths may be omitted when no
 accessible route exists.
 
@@ -173,8 +183,8 @@ npm --prefix web run build
 
 Tests use local fixtures and mock HTTP servers; they do not require an API key.
 Frontend tests cover model geometry, scale, activity layout, path obstruction,
-terrain, marine placement, sky colors, moon position and hierarchical city
-expansion. Go tests cover the client, batching, counts and scene constraints.
+terrain, marine placement, sky colors, moon position and all hierarchical world
+generators. Go tests cover the client, routing, batching, counts and scene constraints.
 
 ## Project layout
 
@@ -182,7 +192,7 @@ expansion. Go tests cover the client, batching, counts and scene constraints.
 | --- | --- |
 | `scene/` | Scene composition, shared asset catalog and tests |
 | `cmd/scene-web/` | HTTP server and API |
-| `web/src/` | Three.js models, standard layout, hierarchical city generator, sky and interface |
+| `web/src/` | Three.js models, standard layout, hierarchical world generators, sky and interface |
 | `scripts/start-scene.sh` | Local startup script |
 | Root Go files | Shared Jev client and bounded action-loop primitives |
 

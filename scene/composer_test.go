@@ -81,6 +81,49 @@ func TestMetropolisUsesHierarchicalCityPlanWithoutPerAssetQuestions(t *testing.T
 	}
 }
 
+type worldPackEvaluator struct{ pack string }
+
+func (e worldPackEvaluator) EvaluateChoices(ctx context.Context, state any, questions map[string]jevloop.ChoiceQuestion) (jevloop.ChoiceResult, error) {
+	result, err := (fakeEvaluator{}).EvaluateChoices(ctx, state, questions)
+	result.Answers["scene_pack"] = jevloop.ChoiceAnswer{Choice: e.pack, Confidence: 1}
+	for name, choice := range map[string]string{
+		"world_archetype": "classic_liner", "world_topology": "open_ocean", "world_density": "grand",
+		"world_population": "passenger_day", "world_feature": "promenade", "world_hazard": "calm", "world_landmark": "four_funnels",
+	} {
+		if question, ok := questions[name]; ok {
+			if _, valid := question.Criteria[choice]; !valid {
+				for candidate := range question.Criteria {
+					choice = candidate
+					break
+				}
+			}
+			result.Answers[name] = jevloop.ChoiceAnswer{Choice: choice, Confidence: .94}
+		}
+	}
+	return result, err
+}
+
+func TestLargeWorldFamiliesUseCompactSemanticPlans(t *testing.T) {
+	for _, tc := range []struct{ pack, prompt, environment string }{
+		{"ocean_liner", "a Titanic-like ocean liner crossing the Atlantic", "ocean"},
+		{"prehistoric", "a vast dinosaur reserve in a primeval jungle", "forest"},
+		{"medieval_city", "a huge fortified fantasy medieval capital", "meadow"},
+	} {
+		t.Run(tc.pack, func(t *testing.T) {
+			spec, err := (Composer{Evaluator: worldPackEvaluator{tc.pack}}).ComposeVariant(context.Background(), tc.prompt, 31)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if spec.ScenePack != tc.pack || spec.Environment != tc.environment || spec.World.Archetype == "" || spec.World.Topology == "" {
+				t.Fatalf("unexpected world plan: %#v", spec)
+			}
+			if len(spec.Objects) != 0 || spec.ModelCalls != 2 {
+				t.Fatalf("large worlds should use intent + compact plan, got calls=%d objects=%#v", spec.ModelCalls, spec.Objects)
+			}
+		})
+	}
+}
+
 func TestCatalogCoversExactCounts(t *testing.T) {
 	for _, item := range assets {
 		for count := 0; count <= 20; count++ {

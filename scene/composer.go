@@ -52,6 +52,19 @@ type CitySpec struct {
 	Landmark   string `json:"landmark"`
 }
 
+// WorldSpec is the semantic grammar for non-city large scene families. Values
+// are family-specific bounded choices; code expands them into geometry and
+// spatial relationships instead of asking Jev for coordinates or raw JSON.
+type WorldSpec struct {
+	Archetype  string `json:"archetype"`
+	Topology   string `json:"topology"`
+	Density    string `json:"density"`
+	Population string `json:"population"`
+	Feature    string `json:"feature"`
+	Hazard     string `json:"hazard"`
+	Landmark   string `json:"landmark"`
+}
+
 type Spec struct {
 	Variant      uint32       `json:"variant"`
 	Environment  string       `json:"environment"`
@@ -66,6 +79,7 @@ type Spec struct {
 	WaterScale   string       `json:"waterScale"`
 	ScenePack    string       `json:"scenePack"`
 	City         CitySpec     `json:"city"`
+	World        WorldSpec    `json:"world"`
 	Avatar       AvatarSpec   `json:"avatar"`
 	Objects      []ObjectSpec `json:"objects"`
 	Model        string       `json:"model"`
@@ -92,10 +106,13 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 	}
 	intent, err := c.Evaluator.EvaluateChoices(ctx, map[string]string{"request": request}, map[string]jevloop.ChoiceQuestion{
 		"scene_pack": {
-			Instructions: "What scale of procedural world does `request` require? Choose metropolis only for a broad urban district, downtown, city center, large city skyline, GTA-like/open-world city, or a request to explore many streets and blocks. A town square, a few buildings, a station, a village or a named list of urban objects remains standard.",
+			Instructions: "Which available procedural scene family best represents the whole world requested in `request`? Choose a large scene family only when it is central to the request. Named story or film references are thematic cues, not requests for an exact reconstruction. A small explicit object composition remains standard.",
 			Criteria: map[string]string{
-				"standard":   "A normal finite scene, landscape, room, village, single street, town square, station or explicit object composition.",
-				"metropolis": "A large city-scale world with multiple districts, a road network, many blocks and a skyline intended for overview and exploration.",
+				"standard":      "A normal finite scene, landscape, room, village, single street, town square, station or explicit object composition.",
+				"metropolis":    "A modern large city, downtown, GTA-like/open-world urban area, or city center with multiple districts, roads and a skyline.",
+				"ocean_liner":   "A giant passenger ship, Titanic-like ocean liner, cruise ship deck or maritime voyage where the vessel is the world.",
+				"prehistoric":   "A Jurassic-like dinosaur reserve, lost prehistoric valley, dinosaur jungle or research park across a large natural landscape.",
+				"medieval_city": "A large medieval, fantasy-feudal or Game-of-Thrones-like walled city, castle settlement or fortified capital.",
 			},
 		},
 		"scenery": {
@@ -134,13 +151,17 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		return Spec{}, fmt.Errorf("invalid moon request %q", moonRequest)
 	}
 	scenePack := intent.Answers["scene_pack"].Choice
-	if scenePack != "standard" && scenePack != "metropolis" {
+	if scenePack != "standard" && scenePack != "metropolis" && scenePack != "ocean_liner" && scenePack != "prehistoric" && scenePack != "medieval_city" {
 		return Spec{}, fmt.Errorf("invalid scene pack %q", scenePack)
 	}
 	questions := globalQuestions()
 	selectedAssets := assets
-	if scenePack == "metropolis" {
-		for name, question := range cityQuestions() {
+	if scenePack != "standard" {
+		packQuestions := cityQuestions()
+		if scenePack != "metropolis" {
+			packQuestions = worldQuestions(scenePack)
+		}
+		for name, question := range packQuestions {
 			questions[name] = question
 		}
 		// Buildings, traffic, parks and street furniture are expanded by the
@@ -226,6 +247,25 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 			Traffic:    answer("city_traffic", true).Choice,
 			Landmark:   answer("city_landmark", true).Choice,
 		}
+	} else if scenePack != "standard" {
+		spec.World = WorldSpec{
+			Archetype:  answer("world_archetype", true).Choice,
+			Topology:   answer("world_topology", true).Choice,
+			Density:    answer("world_density", true).Choice,
+			Population: answer("world_population", true).Choice,
+			Feature:    answer("world_feature", true).Choice,
+			Hazard:     answer("world_hazard", false).Choice,
+			Landmark:   answer("world_landmark", true).Choice,
+		}
+		spec.Terrain = "open"
+		switch scenePack {
+		case "ocean_liner":
+			spec.Environment = "ocean"
+		case "prehistoric":
+			spec.Environment = "forest"
+		case "medieval_city":
+			spec.Environment = "meadow"
+		}
 	}
 	// Explicit exclusions and the selected time of day override thematic inference.
 	// A requested daytime moon is supported, but a holiday alone cannot add one.
@@ -238,6 +278,10 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 	if scenePack == "metropolis" {
 		for _, name := range []string{"city_archetype", "city_districts", "city_roads", "city_density", "city_skyline", "city_waterfront", "city_civic_space", "city_traffic", "city_landmark"} {
 			spec.Confidence = math.Min(spec.Confidence, answer(name, name != "city_waterfront").Confidence)
+		}
+	} else if scenePack != "standard" {
+		for _, name := range []string{"world_archetype", "world_topology", "world_density", "world_population", "world_feature", "world_hazard", "world_landmark"} {
+			spec.Confidence = math.Min(spec.Confidence, answer(name, name != "world_hazard").Confidence)
 		}
 	}
 	for _, item := range selectedAssets {

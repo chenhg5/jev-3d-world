@@ -7,6 +7,8 @@ import {skyColor,createMoon,positionMoon,faceMoon} from "./sky.js";
 import {routePath,planPaths} from "./paths.js";
 import {terrainSampler,createLandscape,objectElevation,refreshPaths} from "./landscape.js";
 import {createMetropolis} from "./city.js";
+import {createLargeWorld} from "./worlds.js";
+import {findPlayerSpawn as findLargeWorldSpawn,collidesWithScene as collidesInLargeWorld} from "./explore.js";
 
 const colors={fabric:0xd7b982,wood:0x6d4930,leaf:0x315f42,accent:0xffa84c,stone:0x737772};
 function rng(seed=42){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
@@ -27,6 +29,33 @@ test("hierarchical city plans expand into large navigable worlds",()=>{
     const bounds=new THREE.Box3().setFromObject(city.group);
     assert.ok(bounds.getSize(new THREE.Vector3()).x>60);
     city.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
+  }
+});
+test("large scene families expand semantic plans into distinct randomized worlds",()=>{
+  const cases=[
+    {scenePack:"ocean_liner",world:{archetype:"classic_liner",topology:"ice_field",density:"grand",population:"passenger_day",feature:"promenade",hazard:"iceberg",landmark:"four_funnels"}},
+    {scenePack:"prehistoric",world:{archetype:"jungle_reserve",topology:"river_corridor",density:"lush",population:"mixed_ecosystem",feature:"park_gate",hazard:"calm",landmark:"mountain_ring"}},
+    {scenePack:"medieval_city",world:{archetype:"northern_keep",topology:"walled_hill",density:"thriving",population:"daily_life",feature:"market_square",hazard:"peaceful",landmark:"high_keep"}},
+  ];
+  for(const spec of cases){
+    const first=createLargeWorld(spec,rng(4)),second=createLargeWorld(spec,rng(9));
+    assert.equal(first.stats.family,spec.scenePack);
+    assert.equal(first.layout.largeWorld,true);
+    assert.ok(first.layout.sceneExtent>=76);
+    assert.ok(first.layout.avatarScale<1);
+    assert.ok(first.layout.items.length>4);
+    const spawn=findLargeWorldSpawn(first.layout,first.landscape.heightAt,.34*first.layout.avatarScale);
+    assert.equal(collidesInLargeWorld(spawn.x,spawn.z,first.layout.items,.34*first.layout.avatarScale),false);
+    assert.ok(Math.hypot(spawn.x,spawn.z)<first.layout.landRadius);
+    if(spec.scenePack==="ocean_liner"){
+      assert.equal(spawn.y,5.9);
+      assert.ok(Math.abs(spawn.z)<8.2,"liner spawn must stay on the passenger deck");
+    }
+    const bounds=new THREE.Box3().setFromObject(first.group),size=bounds.getSize(new THREE.Vector3());
+    assert.ok(size.x>70&&size.z>30,`${spec.scenePack} must occupy a large world`);
+    const signature=world=>world.layout.items.map(entry=>[entry.x,entry.z,entry.width,entry.depth,entry.model.rotation.y]).flat().join(",");
+    assert.notEqual(signature(first),signature(second),`${spec.scenePack} should vary with the generation seed`);
+    for(const world of [first,second])world.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
   }
 });
 test("every catalog asset builds nonempty finite geometry at its documented scale",()=>{
