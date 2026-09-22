@@ -35,12 +35,36 @@ function box(width,height,depth,material) {
   return mesh;
 }
 
-function skylineStrength(kind,x,z,extent) {
+function buildMacroPlan(plan,extent,step,random) {
+  const topology=plan.topology||"orthogonal_core";
+  const greenNetwork=plan.greenNetwork||"central_anchor";
+  const waterSide=plan.waterfront==="none"?"none":["north","east","south","west"][Math.floor(random()*4)];
+  const axisAngle=[0,Math.PI/2,Math.PI/4,-Math.PI/4][Math.floor(random()*4)];
+  const lateral=(random()-.5)*extent*.18;
+  const along=(random()-.5)*extent*.12;
+  const point=(a,b)=>({x:Math.cos(axisAngle)*a-Math.sin(axisAngle)*b,z:Math.sin(axisAngle)*a+Math.cos(axisAngle)*b});
+  let civicCenters;
+  if(greenNetwork==="linear_greenway")civicCenters=[point(-extent*.24,lateral),point(0,lateral),point(extent*.24,lateral)];
+  else if(greenNetwork==="pocket_parks")civicCenters=[point(-extent*.23,-extent*.2),point(extent*.22,-extent*.16),point(-extent*.17,extent*.24),point(extent*.25,extent*.2)];
+  else if(greenNetwork==="linked_nodes")civicCenters=[point(-extent*.2,lateral),point(extent*.2,-lateral),point(0,extent*.2)];
+  else civicCenters=[point(along,lateral)];
+  const landmarkPosition=point((random()<.5?-1:1)*extent*(.14+random()*.12),(random()-.5)*extent*.24);
+  let skylineCores;
+  if(plan.skyline==="twin_core")skylineCores=[point(-extent*.2,along),point(extent*.2,-along)];
+  else if(plan.skyline==="distributed")skylineCores=[point(0,0),point(extent*.28,extent*.2),point(-extent*.29,-extent*.2)];
+  else skylineCores=[point(along,lateral*.55)];
+  const cameraHeading=axisAngle+(random()-.5)*.65;
+  return {topology,greenNetwork,waterSide,axisAngle,cameraHeading,civicCenters,landmarkPosition,skylineCores,step};
+}
+
+function skylineStrength(kind,x,z,extent,macro) {
   const gaussian=(cx,cz,r)=>Math.exp(-(Math.hypot(x-cx,z-cz)**2)/(r*r));
-  if(kind==="twin_core") return Math.max(gaussian(-extent*.2,0,extent*.22),gaussian(extent*.2,-extent*.1,extent*.2));
-  if(kind==="linear") return Math.exp(-Math.abs(z+extent*.04)/(extent*.16))*(.7+.3*Math.exp(-Math.abs(x)/(extent*.6)));
-  if(kind==="distributed") return Math.max(gaussian(0,0,extent*.2),gaussian(extent*.28,extent*.24,extent*.16),gaussian(-extent*.3,-extent*.22,extent*.17));
-  return gaussian(0,0,extent*.28);
+  if(kind==="linear"){
+    const perpendicular=Math.abs(-Math.sin(macro.axisAngle)*x+Math.cos(macro.axisAngle)*z);
+    return Math.exp(-perpendicular/(extent*.15))*(.72+.28*Math.exp(-Math.hypot(x,z)/(extent*.65)));
+  }
+  const radius=kind==="distributed"?extent*.17:kind==="twin_core"?extent*.21:extent*.28;
+  return Math.max(...macro.skylineCores.map(core=>gaussian(core.x,core.z,radius)));
 }
 
 function districtFor(pattern,x,z,extent,strength) {
@@ -121,15 +145,15 @@ function addRoadMarkings(group,positions,horizontal,palette) {
   }
 }
 
-function createCivicSpace(group,kind,palette,block,random,treePoints) {
+function createCivicSpace(group,kind,palette,block,random,treePoints,x,z) {
   const green=kind==="central_park"||kind==="promenade";
   const slab=box(block*.88,.14,block*.88,mat(green?palette.park:palette.walk));
-  slab.position.y=.07;slab.name="city-civic-space";group.add(slab);
+  slab.position.set(x,.07,z);slab.name="city-civic-space";group.add(slab);
   if(green){
-    for(let i=0;i<16;i++)treePoints.push({x:(random()-.5)*block*.72,z:(random()-.5)*block*.72,scale:.7+random()*.65});
+    for(let i=0;i<16;i++)treePoints.push({x:x+(random()-.5)*block*.72,z:z+(random()-.5)*block*.72,scale:.7+random()*.65});
   } else {
     const sculpture=new THREE.Mesh(new THREE.TorusKnotGeometry(1.2,.27,48,8),mat(palette.accent,{metalness:.45,roughness:.32}));
-    sculpture.position.y=2;sculpture.castShadow=true;group.add(sculpture);
+    sculpture.position.set(x,2,z);sculpture.castShadow=true;group.add(sculpture);
   }
 }
 
@@ -153,7 +177,7 @@ function addTraffic(group,plan,roads,extent,palette,random) {
   const roofs=new THREE.InstancedMesh(new THREE.BoxGeometry(.72,.38,.64),mat(palette.glass,{roughness:.3,metalness:.2}),count);
   const dummy=new THREE.Object3D();
   for(let i=0;i<count;i++){
-    const horizontal=i%2===0,road=roads[Math.floor(random()*roads.length)]||0,along=(random()-.5)*extent*.92;
+    const horizontal=i%2===0,choices=horizontal?roads.z:roads.x,road=choices[Math.floor(random()*choices.length)]||0,along=(random()-.5)*extent*.92;
     dummy.position.set(horizontal?along:road,horizontal?0:0,horizontal?road:along);dummy.position.y=.34;
     dummy.rotation.y=horizontal?0:Math.PI/2;dummy.updateMatrix();cars.setMatrixAt(i,dummy.matrix);
     dummy.position.y=.77;dummy.updateMatrix();roofs.setMatrixAt(i,dummy.matrix);
@@ -164,46 +188,93 @@ function addTraffic(group,plan,roads,extent,palette,random) {
 
 /** Expand a compact Jev city plan into a navigable multi-district world. */
 export function createMetropolis(spec,random=Math.random) {
-  const plan={archetype:"global",districts:"core_ring",roads:"avenue_grid",density:"dense",skyline:"single_core",waterfront:"none",civicSpace:"civic_plaza",traffic:"busy",landmark:"spire",...(spec.city||{})};
+  const plan={archetype:"global",districts:"core_ring",roads:"avenue_grid",topology:"orthogonal_core",greenNetwork:"central_anchor",density:"dense",skyline:"single_core",waterfront:"none",civicSpace:"civic_plaza",traffic:"busy",landmark:"spire",...(spec.city||{})};
   const palette=cityPalettes[plan.archetype]||cityPalettes.global;
   const density=densitySettings[plan.density]||densitySettings.dense;
   const road=roadSettings[plan.roads]||roadSettings.avenue_grid;
   const extent=density.extent,half=extent/2,step=road.block+road.road;
+  const macro=buildMacroPlan(plan,extent,step,random);
   const group=new THREE.Group();group.name="metropolis-scene-pack";
   const landscapeGroup=new THREE.Group();landscapeGroup.name="metropolis-ground";group.add(landscapeGroup);
   const ground=box(extent,.18,extent,mat(palette.ground));ground.position.y=-.09;ground.receiveShadow=true;landscapeGroup.add(ground);
 
+  let waterWidth=0;
   if(plan.waterfront!=="none"){
-    const waterWidth=plan.waterfront==="harbor"?extent*.24:plan.waterfront==="river"?extent*.13:extent*.08;
-    const water=new THREE.Mesh(new THREE.PlaneGeometry(extent*1.35,waterWidth),mat(0x3f8fa4,{roughness:.24,metalness:.22}));
-    water.rotation.x=-Math.PI/2;water.position.set(0,.015,-half+waterWidth/2);landscapeGroup.add(water);
+    waterWidth=plan.waterfront==="harbor"?extent*.24:plan.waterfront==="river"?extent*.13:extent*.08;
+    const vertical=macro.waterSide==="east"||macro.waterSide==="west";
+    const water=new THREE.Mesh(new THREE.PlaneGeometry(vertical?waterWidth:extent*1.35,vertical?extent*1.35:waterWidth),mat(0x3f8fa4,{roughness:.24,metalness:.22}));
+    water.rotation.x=-Math.PI/2;
+    if(plan.waterfront==="river")water.position.set(0,.015,0);
+    else if(macro.waterSide==="north")water.position.set(0,.015,-half+waterWidth/2);
+    else if(macro.waterSide==="south")water.position.set(0,.015,half-waterWidth/2);
+    else if(macro.waterSide==="west")water.position.set(-half+waterWidth/2,.015,0);
+    else water.position.set(half-waterWidth/2,.015,0);
+    landscapeGroup.add(water);
   }
 
-  const roadPositions=[];
-  for(let value=-half+step;value<half-step*.4;value+=step)roadPositions.push(value);
-  for(const value of roadPositions){
-    const horizontal=box(extent,.05,road.road,mat(palette.road));horizontal.position.set(0,.025,value);landscapeGroup.add(horizontal);
-    const vertical=box(road.road,.052,extent,mat(palette.road));vertical.position.set(value,.026,0);landscapeGroup.add(vertical);
+  const roadPositionsX=[],roadPositionsZ=[];
+  for(let value=-half+step;value<half-step*.4;value+=step){
+    roadPositionsX.push(value+(random()-.5)*road.road*.55);
+    roadPositionsZ.push(value+(random()-.5)*road.road*.55);
   }
-  addRoadMarkings(landscapeGroup,roadPositions,true,palette);
-  addRoadMarkings(landscapeGroup,roadPositions,false,palette);
+  for(const value of roadPositionsZ){const horizontal=box(extent,.05,road.road,mat(palette.road));horizontal.position.set(0,.025,value);landscapeGroup.add(horizontal);}
+  for(const value of roadPositionsX){const vertical=box(road.road,.052,extent,mat(palette.road));vertical.position.set(value,.026,0);landscapeGroup.add(vertical);}
+  addRoadMarkings(landscapeGroup,roadPositionsZ,true,palette);
+  addRoadMarkings(landscapeGroup,roadPositionsX,false,palette);
+
+  if(macro.topology==="diagonal_axes"){
+    for(const angle of [macro.axisAngle,macro.axisAngle+Math.PI/2]){
+      const avenue=box(extent*1.35,.065,road.road*1.28,mat(palette.road));
+      avenue.position.y=.034;avenue.rotation.y=angle;landscapeGroup.add(avenue);
+    }
+  }else if(macro.topology==="ring_radial"){
+    const radius=extent*.27,width=road.road*1.05;
+    const ring=new THREE.Mesh(new THREE.RingGeometry(radius-width/2,radius+width/2,72),mat(palette.road));
+    ring.rotation.x=-Math.PI/2;ring.position.y=.035;landscapeGroup.add(ring);
+    for(const angle of [macro.axisAngle,macro.axisAngle+Math.PI/2]){
+      const avenue=box(extent*1.18,.065,road.road*1.2,mat(palette.road));avenue.position.y=.034;avenue.rotation.y=angle;landscapeGroup.add(avenue);
+    }
+  }else if(macro.topology==="waterfront_spine"){
+    const spine=box(extent*1.12,.07,road.road*1.6,mat(palette.walk));spine.position.y=.04;spine.rotation.y=macro.axisAngle;landscapeGroup.add(spine);
+  }
 
   const items=[],treePoints=[];
   let buildingIndex=0,blockCount=0;
   const districtCounts={business:0,mixed:0,residential:0,innovation:0,entertainment:0,waterfront:0};
-  const civicCenter={x:0,z:0};
-  const landmarkPosition={x:step*.52,z:-step*.52};
+  let landmarkPosition=macro.landmarkPosition;
+  const nearWater=(x,z)=>{
+    if(plan.waterfront==="none")return false;
+    if(plan.waterfront==="river")return (macro.waterSide==="east"||macro.waterSide==="west")?Math.abs(x)<waterWidth*.62:Math.abs(z)<waterWidth*.62;
+    if(macro.waterSide==="north")return z<-half+waterWidth;
+    if(macro.waterSide==="south")return z>half-waterWidth;
+    if(macro.waterSide==="west")return x<-half+waterWidth;
+    return x>half-waterWidth;
+  };
+  const macroRoad=(x,z)=>{
+    const rx=Math.cos(macro.axisAngle)*x+Math.sin(macro.axisAngle)*z;
+    const rz=-Math.sin(macro.axisAngle)*x+Math.cos(macro.axisAngle)*z;
+    if(macro.topology==="diagonal_axes")return Math.min(Math.abs(rx),Math.abs(rz))<road.road*.8;
+    if(macro.topology==="ring_radial")return Math.abs(Math.hypot(x,z)-extent*.27)<road.road*.72||Math.min(Math.abs(rx),Math.abs(rz))<road.road*.7;
+    if(macro.topology==="waterfront_spine")return Math.abs(rz)<road.road*.9;
+    return false;
+  };
+  landmarkPosition=[
+    landmarkPosition,
+    {x:-landmarkPosition.x,z:-landmarkPosition.z},
+    {x:landmarkPosition.z,z:-landmarkPosition.x},
+    {x:-landmarkPosition.z,z:landmarkPosition.x},
+  ].find(point=>!nearWater(point.x,point.z)&&!macroRoad(point.x,point.z))||{x:step*.55,z:-step*.55};
   const firstCenter=-half+step/2;
   for(let x=firstCenter;x<half;x+=step)for(let z=firstCenter;z<half;z+=step){
     if(Math.abs(x)>half-step*.32||Math.abs(z)>half-step*.32)continue;
-    if(plan.waterfront!=="none"&&z<-half+extent*.24)continue;
+    if(nearWater(x,z)||macroRoad(x,z))continue;
     blockCount++;
-    const civic=Math.hypot(x-civicCenter.x,z-civicCenter.z)<step*.48;
+    const civic=macro.civicCenters.find(center=>Math.hypot(x-center.x,z-center.z)<step*.72);
     const landmarkBlock=Math.hypot(x-landmarkPosition.x,z-landmarkPosition.z)<step*.45;
-    if(civic){createCivicSpace(group,plan.civicSpace,palette,road.block,random,treePoints);continue;}
+    if(civic){createCivicSpace(group,plan.civicSpace,palette,road.block,random,treePoints,x,z);continue;}
     const sidewalk=box(road.block,.16,road.block,mat(palette.walk));sidewalk.position.set(x,.08,z);sidewalk.receiveShadow=true;group.add(sidewalk);
     if(landmarkBlock)continue;
-    const blockStrength=skylineStrength(plan.skyline,x,z,extent);
+    const blockStrength=skylineStrength(plan.skyline,x,z,extent,macro);
     const district=districtFor(plan.districts,x,z,extent,blockStrength);
     districtCounts[district]++;
     const lots=plan.roads==="superblocks"?3:plan.roads==="tight_grid"?2:plan.density==="urban"?2:density.lots;
@@ -211,7 +282,7 @@ export function createMetropolis(spec,random=Math.random) {
     for(let ix=0;ix<lots;ix++)for(let iz=0;iz<lots;iz++){
       if(random()<(plan.density==="urban"?.16:.07))continue;
       const bx=x+(ix-(lots-1)/2)*lot,bz=z+(iz-(lots-1)/2)*lot;
-      const strength=skylineStrength(plan.skyline,bx,bz,extent);
+      const strength=skylineStrength(plan.skyline,bx,bz,extent,macro);
       let height=(5+random()*7+strength*(30+random()*30))*density.height;
       height*=({business:1.12,mixed:.8,residential:.52,innovation:.9,entertainment:.45,waterfront:.88}[district]||1);
       if(plan.archetype==="sunbelt")height*=.72;
@@ -233,15 +304,18 @@ export function createMetropolis(spec,random=Math.random) {
   group.add(landmark);
   items.push({type:"city_landmark",group:"landmark",model:landmark,x:landmarkPosition.x,z:landmarkPosition.z,width:13,depth:13,height:landmarkHeight,label:"City landmark",index:0,count:1,editable:false});
   addTrees(group,treePoints,palette);
-  const trafficCount=addTraffic(group,plan,roadPositions,extent,palette,random);
+  const trafficCount=addTraffic(group,plan,{x:roadPositionsX,z:roadPositionsZ},extent,palette,random);
 
   const paths=[];
   const pathGroup=new THREE.Group();pathGroup.name="walking-paths";landscapeGroup.add(pathGroup);
   const landscape={group:landscapeGroup,heightAt:()=>.18,paths,extent:extent*1.4,pathGroup};
   // The city uses larger world units than the handcrafted dioramas. Keep the
   // explorer near real pedestrian scale relative to cars and low-rise blocks.
-  const layout={items,landRadius:extent*.72,sceneExtent:extent,roadZ:0,city:true,largeWorld:true,avatarScale:.68,cameraTargetY:10,worldFamily:"metropolis"};
-  group.userData.cityStats={buildings:buildingIndex,blocks:blockCount,roads:roadPositions.length*2,traffic:trafficCount,extent,districts:districtCounts};
-  group.userData.cityPlan=plan;
+  const layout={items,landRadius:extent*.72,sceneExtent:extent,roadZ:0,city:true,largeWorld:true,avatarScale:.68,cameraTargetY:10,
+    cameraProfile:"city",cameraHeading:macro.cameraHeading,worldFamily:"metropolis"};
+  group.userData.cityStats={buildings:buildingIndex,blocks:blockCount,roads:roadPositionsX.length+roadPositionsZ.length,traffic:trafficCount,extent,districts:districtCounts,
+    macro:{topology:macro.topology,greenNetwork:macro.greenNetwork,waterSide:macro.waterSide,axisAngle:macro.axisAngle,cameraHeading:macro.cameraHeading,
+      civicCenters:macro.civicCenters.map(({x,z})=>({x:+x.toFixed(2),z:+z.toFixed(2)})),landmark:{x:+landmarkPosition.x.toFixed(2),z:+landmarkPosition.z.toFixed(2)}}};
+  group.userData.cityPlan={...plan,...group.userData.cityStats.macro};
   return {group,landscape,layout,stats:group.userData.cityStats,palette};
 }

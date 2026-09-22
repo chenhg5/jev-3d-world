@@ -19,7 +19,7 @@ test("hierarchical city plans expand into large navigable worlds",()=>{
     ["coastal_tech","megacity","superblocks","twin_core"],
     ["sunbelt","urban","avenue_grid","distributed"],
   ]){
-    const city=createMetropolis({city:{archetype,density,roads,skyline,districts:"polycentric",waterfront:"harbor",civicSpace:"central_park",traffic:"busy",landmark:"spire"}},rng(7));
+    const city=createMetropolis({city:{archetype,density,roads,skyline,districts:"polycentric",topology:"orthogonal_core",greenNetwork:"central_anchor",waterfront:"harbor",civicSpace:"central_park",traffic:"busy",landmark:"spire"}},rng(7));
     assert.ok(city.stats.buildings>30,`${archetype} building count`);
     assert.ok(city.stats.blocks>=10,`${archetype} district blocks`);
     assert.ok(city.stats.roads>=6,`${archetype} road network`);
@@ -31,6 +31,19 @@ test("hierarchical city plans expand into large navigable worlds",()=>{
     assert.ok(bounds.getSize(new THREE.Vector3()).x>60);
     city.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
   }
+});
+test("the same city brief produces visibly different macro plans across variants",()=>{
+  const spec={city:{archetype:"coastal_tech",density:"megacity",roads:"superblocks",skyline:"twin_core",districts:"polycentric",
+    topology:"diagonal_axes",greenNetwork:"linked_nodes",waterfront:"harbor",civicSpace:"promenade",traffic:"busy",landmark:"terraced"}};
+  const first=createMetropolis(spec,rng(11)),second=createMetropolis(spec,rng(987654321));
+  assert.equal(first.stats.macro.topology,"diagonal_axes");
+  assert.equal(first.stats.macro.civicCenters.length,3);
+  assert.notDeepEqual(first.stats.macro,second.stats.macro,"variant must alter coast, axes, civic nodes or landmark placement");
+  assert.notDeepEqual(first.stats.macro.landmark,second.stats.macro.landmark,"landmark must move between variants");
+  const firstPositions=first.layout.items.slice(0,20).map(({x,z,height})=>[x,z,+height.toFixed(2)]);
+  const secondPositions=second.layout.items.slice(0,20).map(({x,z,height})=>[x,z,+height.toFixed(2)]);
+  assert.notDeepEqual(firstPositions,secondPositions,"district geometry must visibly change");
+  for(const city of [first,second])city.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
 });
 test("large scene families expand semantic plans into distinct randomized worlds",()=>{
   const cases=[

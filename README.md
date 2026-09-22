@@ -10,8 +10,9 @@ locally. No text-generating LLM is required.
   vehicles, boats, playground equipment and more.
 - Hierarchical metropolis generation for downtown and open-world city prompts.
   Jev chooses an urban archetype, district pattern, road network, density,
-  skyline, waterfront, civic space, traffic and landmark; the browser expands
-  that compact plan into dozens or hundreds of navigable buildings.
+  macro topology, green-space network, skyline, waterfront, civic space,
+  traffic and landmark. The browser expands that compact plan into dozens or
+  hundreds of navigable buildings.
 - A scene-family router for other large worlds. Ocean liners, prehistoric
   reserves and medieval fortified cities each have their own bounded Jev
   questions and spatial grammar instead of sharing a city template.
@@ -101,8 +102,10 @@ A northern fantasy medieval capital inside stone walls beneath a high citadel.
    code generates.
 4. The server validates the offered choices and reconciles moon visibility with
    explicit instructions and time of day.
-5. Each large scene family has a separate generator. Metropolises divide into
-   functional districts and road networks; liners build a hull, layered decks,
+5. Each large scene family has a separate generator. Metropolises vary their
+   coast direction, main axes, diagonal/ring/waterfront roads, skyline cores,
+   public-space nodes and landmark position for every variant before expanding
+   functional districts; liners build a hull, layered decks,
    funnels and lifeboats; prehistoric worlds reserve visible animal habitats
    inside forest and terrain layers; medieval cities pack homes inside walls
    beneath a citadel. Generated structures register footprints for Explore.

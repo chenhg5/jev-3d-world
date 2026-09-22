@@ -268,12 +268,18 @@ function applyCamera(kind, random) {
     const targetY=currentLayout.cameraTargetY??8;
     const jitter=(random()-.5)*.08;
     const wide=currentLayout.cameraProfile==="wide";
+    const cityWide=currentLayout.cameraProfile==="city";
     const settings={
-      isometric:{position:[extent*.58,extent*.58,extent*.67],target:[0,targetY,0],fov:42},
-      cinematic:{position:[extent*(wide?.62:.47+jitter),extent*(wide?.28:.12),extent*(wide?.75:.56)],target:[0,targetY+3,-extent*.08],fov:wide?42:45},
+      isometric:{position:[extent*(cityWide?.72:.58),extent*(cityWide?.66:.58),extent*(cityWide?.82:.67)],target:[0,targetY,0],fov:42},
+      cinematic:{position:[extent*(cityWide?.72:wide?.62:.47+jitter),extent*(cityWide?.34:wide?.28:.12),extent*(cityWide?.84:wide?.75:.56)],target:[0,targetY+(cityWide?1:3),-extent*(cityWide?0:.08)],fov:cityWide?48:wide?42:45},
       top_down:{position:[.1,extent*.92,.1],target:[0,0,0],fov:44},
       eye_level:{position:[extent*.34,3.2,extent*.34],target:[0,targetY,0],fov:58},
     }[kind]||{position:[extent*.58,extent*.58,extent*.67],target:[0,targetY,0],fov:42};
+    if(kind!=="top_down"&&currentLayout.cameraHeading){
+      const [x,,z]=settings.position,angle=currentLayout.cameraHeading;
+      settings.position[0]=x*Math.cos(angle)-z*Math.sin(angle);
+      settings.position[2]=x*Math.sin(angle)+z*Math.cos(angle);
+    }
     camera.position.set(...settings.position);controls.target.set(...settings.target);camera.fov=settings.fov;
     camera.far=900;controls.maxDistance=extent*3;camera.updateProjectionMatrix();
     if(scene.fog){scene.fog.near=extent*.72;scene.fog.far=extent*2.5;}
@@ -477,9 +483,13 @@ function renderScene(spec, promptText) {
 
 function updateSummary(spec) {
   summary.replaceChildren();
+  let renderedStats={};
+  try{renderedStats=JSON.parse(host.dataset.worldStats||"{}");}catch{}
+  const macro=renderedStats.macro||{};
   const cityEntries=spec.scenePack==="metropolis" ? [
-    "large city",spec.city?.archetype,spec.city?.districts,spec.city?.roads,spec.city?.density,spec.city?.skyline,
-    spec.city?.waterfront!=="none"?spec.city?.waterfront:null,spec.city?.civicSpace,spec.city?.traffic+" traffic",
+    "large city",spec.city?.archetype,spec.city?.districts,spec.city?.roads,spec.city?.topology,spec.city?.greenNetwork,spec.city?.density,spec.city?.skyline,
+    spec.city?.waterfront!=="none"?spec.city?.waterfront:null,macro.waterSide&&macro.waterSide!=="none"?macro.waterSide+" water edge":null,
+    macro.civicCenters?.length?macro.civicCenters.length+" civic nodes":null,spec.city?.civicSpace,spec.city?.traffic+" traffic",
   ].filter(Boolean) : [];
   const worldEntries=!["standard","metropolis",undefined].includes(spec.scenePack) ? [
     "large world",spec.scenePack,spec.world?.archetype,spec.world?.topology,spec.world?.density,

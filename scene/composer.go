@@ -41,15 +41,17 @@ type AvatarSpec struct {
 // into roads, districts and hundreds of buildings without asking the model to
 // place every object individually.
 type CitySpec struct {
-	Archetype  string `json:"archetype"`
-	Districts  string `json:"districts"`
-	Roads      string `json:"roads"`
-	Density    string `json:"density"`
-	Skyline    string `json:"skyline"`
-	Waterfront string `json:"waterfront"`
-	CivicSpace string `json:"civicSpace"`
-	Traffic    string `json:"traffic"`
-	Landmark   string `json:"landmark"`
+	Archetype    string `json:"archetype"`
+	Districts    string `json:"districts"`
+	Roads        string `json:"roads"`
+	Topology     string `json:"topology"`
+	GreenNetwork string `json:"greenNetwork"`
+	Density      string `json:"density"`
+	Skyline      string `json:"skyline"`
+	Waterfront   string `json:"waterfront"`
+	CivicSpace   string `json:"civicSpace"`
+	Traffic      string `json:"traffic"`
+	Landmark     string `json:"landmark"`
 }
 
 // WorldSpec is the semantic grammar for non-city large scene families. Values
@@ -237,15 +239,17 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		spec.Environment = "city"
 		spec.Terrain = "open"
 		spec.City = CitySpec{
-			Archetype:  answer("city_archetype", true).Choice,
-			Districts:  answer("city_districts", true).Choice,
-			Roads:      answer("city_roads", true).Choice,
-			Density:    answer("city_density", true).Choice,
-			Skyline:    answer("city_skyline", true).Choice,
-			Waterfront: answer("city_waterfront", false).Choice,
-			CivicSpace: answer("city_civic_space", true).Choice,
-			Traffic:    answer("city_traffic", true).Choice,
-			Landmark:   answer("city_landmark", true).Choice,
+			Archetype:    answer("city_archetype", true).Choice,
+			Districts:    answer("city_districts", true).Choice,
+			Roads:        answer("city_roads", true).Choice,
+			Topology:     answer("city_topology", true).Choice,
+			GreenNetwork: answer("city_green_network", true).Choice,
+			Density:      answer("city_density", true).Choice,
+			Skyline:      answer("city_skyline", true).Choice,
+			Waterfront:   answer("city_waterfront", false).Choice,
+			CivicSpace:   answer("city_civic_space", true).Choice,
+			Traffic:      answer("city_traffic", true).Choice,
+			Landmark:     answer("city_landmark", true).Choice,
 		}
 	} else if scenePack != "standard" {
 		spec.World = WorldSpec{
@@ -276,7 +280,7 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		spec.Confidence = math.Min(spec.Confidence, answer(name, name != "environment" && name != "lighting").Confidence)
 	}
 	if scenePack == "metropolis" {
-		for _, name := range []string{"city_archetype", "city_districts", "city_roads", "city_density", "city_skyline", "city_waterfront", "city_civic_space", "city_traffic", "city_landmark"} {
+		for _, name := range []string{"city_archetype", "city_districts", "city_roads", "city_topology", "city_green_network", "city_density", "city_skyline", "city_waterfront", "city_civic_space", "city_traffic", "city_landmark"} {
 			spec.Confidence = math.Min(spec.Confidence, answer(name, name != "city_waterfront").Confidence)
 		}
 	} else if scenePack != "standard" {
@@ -331,6 +335,24 @@ func cityQuestions() map[string]jevloop.ChoiceQuestion {
 				"mixed_quarters":  "Several varied quarters where offices, apartments, shops and leisure uses mix at different scales.",
 				"polycentric":     "Multiple business and residential centers distributed across the city, suitable for a broad megacity.",
 				"waterfront_axis": "Dense business and cultural districts follow a harbor, river or coastal development axis.",
+			},
+		},
+		"city_topology": {
+			Instructions: "Which macro-scale spatial topology best fits this city? This is a creative planning choice: when the request does not explicitly constrain the street geometry, keep several forms plausible so repeated generations can explore visibly different city plans.",
+			Criteria: map[string]string{
+				"orthogonal_core":  "A regular rectilinear street field organized around a clear downtown core.",
+				"diagonal_axes":    "A grid cut by one or two strong diagonal boulevards, producing triangular and offset districts.",
+				"ring_radial":      "A major orbital road and radial avenues organize concentric urban districts.",
+				"waterfront_spine": "Development stretches along a waterfront or long central civic corridor.",
+			},
+		},
+		"city_green_network": {
+			Instructions: "How should parks and public open spaces connect across the city? Treat this as a creative variation unless the request names a specific park structure.",
+			Criteria: map[string]string{
+				"central_anchor":  "One large park or plaza is the primary open-space anchor.",
+				"linear_greenway": "Several open spaces form a long green or civic corridor.",
+				"pocket_parks":    "Multiple smaller parks are distributed among different districts.",
+				"linked_nodes":    "Two or three major public spaces form a network across separate centers.",
 			},
 		},
 		"city_density": {

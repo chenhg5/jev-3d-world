@@ -53,8 +53,8 @@ func (metropolisEvaluator) EvaluateChoices(ctx context.Context, state any, quest
 	result.Answers["scene_pack"] = jevloop.ChoiceAnswer{Choice: "metropolis", Confidence: 1}
 	choices := map[string]string{
 		"city_archetype": "coastal_tech", "city_roads": "superblocks", "city_density": "megacity",
-		"city_districts": "polycentric",
-		"city_skyline":   "twin_core", "city_waterfront": "harbor", "city_civic_space": "promenade",
+		"city_districts": "polycentric", "city_topology": "waterfront_spine", "city_green_network": "linked_nodes",
+		"city_skyline": "twin_core", "city_waterfront": "harbor", "city_civic_space": "promenade",
 		"city_traffic": "busy", "city_landmark": "terraced",
 	}
 	for name, choice := range choices {
@@ -70,7 +70,7 @@ func TestMetropolisUsesHierarchicalCityPlanWithoutPerAssetQuestions(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if spec.ScenePack != "metropolis" || spec.Environment != "city" || spec.City.Density != "megacity" || spec.City.Skyline != "twin_core" {
+	if spec.ScenePack != "metropolis" || spec.Environment != "city" || spec.City.Density != "megacity" || spec.City.Skyline != "twin_core" || spec.City.Topology != "waterfront_spine" || spec.City.GreenNetwork != "linked_nodes" {
 		t.Fatalf("unexpected city plan: %#v", spec)
 	}
 	if len(spec.Objects) != 0 {
