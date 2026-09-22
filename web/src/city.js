@@ -238,7 +238,9 @@ export function createMetropolis(spec,random=Math.random) {
   const paths=[];
   const pathGroup=new THREE.Group();pathGroup.name="walking-paths";landscapeGroup.add(pathGroup);
   const landscape={group:landscapeGroup,heightAt:()=>.18,paths,extent:extent*1.4,pathGroup};
-  const layout={items,landRadius:extent*.72,roadZ:0,city:true};
+  // The city uses larger world units than the handcrafted dioramas. Keep the
+  // explorer near real pedestrian scale relative to cars and low-rise blocks.
+  const layout={items,landRadius:extent*.72,roadZ:0,city:true,avatarScale:.68};
   group.userData.cityStats={buildings:buildingIndex,blocks:blockCount,roads:roadPositions.length*2,traffic:trafficCount,extent,districts:districtCounts};
   group.userData.cityPlan=plan;
   return {group,landscape,layout,stats:group.userData.cityStats,palette};

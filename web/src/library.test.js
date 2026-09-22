@@ -237,7 +237,7 @@ test("floating toolbar stays near the object and within desktop and phone viewpo
 });
 
 test("first-person spawn finds open ground and scene collision respects solid groups",async()=>{
-  const {findPlayerSpawn,collidesWithScene,normalizeControlCode,createPlayerAvatar,nextExploreView,resolveAvatarStyle,applyAvatarStyle,isExploreCheckpointUsable}=await import("./explore.js");
+  const {findPlayerSpawn,collidesWithScene,normalizeControlCode,createPlayerAvatar,nextExploreView,resolveAvatarStyle,applyAvatarStyle,isExploreCheckpointUsable,avatarScaleForLayout}=await import("./explore.js");
   const items=[
     {type:"tent",group:"camp",x:0,z:3,width:5,depth:5},
     {type:"tree",group:"flora",x:4,z:2,width:2,depth:2},
@@ -265,6 +265,12 @@ test("first-person spawn finds open ground and scene collision respects solid gr
   assert.equal(avatar.getObjectsByProperty("name","avatar-pupil").length,2);
   assert.equal(avatar.getObjectsByProperty("name","avatar-nose").length,1);
   assert.equal(avatar.getObjectsByProperty("name","avatar-mouth").length,1);
+  assert.equal(avatarScaleForLayout({}),1);
+  assert.equal(avatarScaleForLayout({avatarScale:.68}),.68);
+  assert.equal(avatarScaleForLayout({avatarScale:.1}),.45);
+  avatar.scale.setScalar(avatarScaleForLayout({avatarScale:.68}));
+  const cityAvatarHeight=new THREE.Box3().setFromObject(avatar).getSize(new THREE.Vector3()).y;
+  assert.ok(cityAvatarHeight>1.3&&cityAvatarHeight<1.6,"city avatar should read as pedestrian scale");
   const style=applyAvatarStyle(avatar,{variant:9,palette:"winter",avatar:{jacket:"violet",trousers:"ice",accessory:"scarf",accessoryColor:"cream"}});
   assert.deepEqual({jacket:style.jacket,trousers:style.trousers,accessory:style.accessory,accessoryColor:style.accessoryColor},
     {jacket:"violet",trousers:"ice",accessory:"scarf",accessoryColor:"cream"});

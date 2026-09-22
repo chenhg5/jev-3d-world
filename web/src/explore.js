@@ -74,6 +74,13 @@ export function isExploreCheckpointUsable(checkpoint, world, radius = .34) {
     !collidesWithScene(checkpoint.x, checkpoint.z, world.layout.items, radius);
 }
 
+export function avatarScaleForLayout(layout = {}) {
+  const requested = Number(layout.avatarScale);
+  return Number.isFinite(requested) && requested > 0
+    ? THREE.MathUtils.clamp(requested, .45, 1.25)
+    : 1;
+}
+
 function standardMaterial(color, roughness = .78) {
   return new THREE.MeshStandardMaterial({color, roughness, metalness: .02});
 }
@@ -186,8 +193,9 @@ function dampAngle(current, target, smoothing, delta) {
 
 export function createExplorer({ canvas, camera, controls, scene, stage, hud, button, getWorld, onActiveChange, onStatus }) {
   const keys = new Set();
-  const eyeHeight = 1.65;
-  const playerRadius = .34;
+  let avatarScale = 1;
+  let eyeHeight = 1.65;
+  let playerRadius = .34;
   const player = new THREE.Vector3();
   const avatar = createPlayerAvatar();
   scene.add(avatar);
@@ -227,7 +235,7 @@ export function createExplorer({ canvas, camera, controls, scene, stage, hud, bu
       camera.rotation.set(pitch, yaw, 0);
       return;
     }
-    const focus = new THREE.Vector3(player.x, player.y + 1.18 + jumpHeight, player.z);
+    const focus = new THREE.Vector3(player.x, player.y + 1.18 * avatarScale + jumpHeight, player.z);
     const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
     const overview = view === "overview";
     const desired = focus.clone().addScaledVector(forward, overview ? -11 : -5.4);
@@ -249,6 +257,11 @@ export function createExplorer({ canvas, camera, controls, scene, stage, hud, bu
   function begin() {
     const world = worldState();
     if (!world || active) return;
+    avatarScale = avatarScaleForLayout(world.layout);
+    eyeHeight = 1.65 * avatarScale;
+    playerRadius = .34 * avatarScale;
+    avatar.scale.setScalar(avatarScale);
+    stage.dataset.avatarScale = avatarScale.toFixed(2);
     saved = {
       position: camera.position.clone(), quaternion: camera.quaternion.clone(),
       fov: camera.fov, near: camera.near, target: controls.target.clone(),
