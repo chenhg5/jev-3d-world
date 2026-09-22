@@ -13,16 +13,30 @@ export function appendLayout(items, current, spec, random) {
   const coastal = ["ocean","coast"].includes(spec.environment);
   for (const item of items) {
     let anchor = placed.find(p => p.type === item.anchor);
+    const sceneAnchor = item.anchor === "scene" && current.largeWorld;
     if (!anchor && ["bridge","lotus",...waterLife].includes(item.type)) anchor = placed.find(p => ["pond","river"].includes(p.type));
     const afloat = coastal && waterLife.has(item.type);
+    const besideLiner = current.worldFamily === "ocean_liner" && afloat;
+    const aboardLiner = current.worldFamily === "ocean_liner" && sceneAnchor && people.has(item.group);
     const waterShare = other => other === anchor && groundWater.has(other.type) && ["bridge","lotus",...waterLife].includes(item.type);
-    const distance = anchor ? (Math.hypot(anchor.width,anchor.depth)+Math.hypot(item.width,item.depth))/2 + .8 : current.landRadius*.45;
+    const distance = anchor ? (Math.hypot(anchor.width,anchor.depth)+Math.hypot(item.width,item.depth))/2 + .8 : current.landRadius*(sceneAnchor?.3:.45);
     const angles = {left:-Math.PI/2,right:Math.PI/2,foreground:0,background:Math.PI};
     const angle = angles[item.placement] ?? (item.index/Math.max(1,item.count)*Math.PI*2 + random()*.5);
     let desired = {x:(anchor?.x??0)+Math.sin(angle)*distance,z:(anchor?.z??0)+Math.cos(angle)*distance};
     if (anchor && waterShare(anchor)) desired = {x:anchor.x,z:anchor.z};
     if (!anchor && item.placement === "center") desired = {x:0,z:0};
-    if (afloat) { const r=current.landRadius+Math.hypot(item.width,item.depth)/2+3; desired={x:Math.sin(angle)*r,z:Math.cos(angle)*r}; }
+    // The liner's walkable world is a long deck rather than a circular island.
+    // Put people along its side promenades and boats in the water beside the
+    // hull. Other coastal scenes keep the circular shoreline behavior.
+    if (aboardLiner) {
+      const t=(item.index+1)/Math.max(2,item.count+1),side=item.index%2?1:-1;
+      desired={x:-43+t*86,z:side*6.85};
+    } else if (besideLiner) {
+      const t=(item.index+1)/Math.max(2,item.count+1),side=item.index%2?1:-1;
+      desired={x:-40+t*80,z:side*(13+item.depth/2)};
+    } else if (afloat) {
+      const r=current.landRadius+Math.hypot(item.width,item.depth)/2+3; desired={x:Math.sin(angle)*r,z:Math.cos(angle)*r};
+    }
     let best = null;
     for (let attempt=0;attempt<2400;attempt++) {
       const radius=Math.sqrt(attempt)*.65, a=attempt*2.399;
@@ -32,7 +46,7 @@ export function appendLayout(items, current, spec, random) {
           (item.placement==="foreground"&&dz<=0)||(item.placement==="background"&&dz>=0)) continue;
       if (placed.some(other=>!waterShare(other)&&intersects(candidate,other,.3))) continue;
       const d=Math.hypot(candidate.x,candidate.z),margin=Math.hypot(item.width,item.depth)/2;
-      if (coastal && (afloat ? d<current.landRadius+margin+1 : d+margin>current.landRadius-.5)) continue;
+      if (coastal && !besideLiner && (afloat ? d<current.landRadius+margin+1 : d+margin>current.landRadius-.5)) continue;
       if (spec.environment==="city" && item.group!=="vehicle" && Math.abs(candidate.z-(current.roadZ??1))<candidate.depth/2+1.8) continue;
       best=candidate;break;
     }

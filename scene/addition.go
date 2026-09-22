@@ -65,6 +65,13 @@ func (c Composer) ComposeAddition(ctx context.Context, request string, current S
 	delta := Spec{Variant: binary.LittleEndian.Uint32(seed[:]), Objects: []ObjectSpec{}, Model: result.Model,
 		ModelCalls: calls, InputTokens: result.Usage.InputTokens, OutputTokens: result.Usage.OutputTokens, Confidence: 1}
 	anchors := map[string]string{"none": "No specific existing object is a location reference; choose a free place."}
+	if current.ScenePack != "" && current.ScenePack != "standard" {
+		description := "The current generated large world as a whole. Use this when the request refers to the city, reserve, castle or main scene rather than a catalog object."
+		if current.ScenePack == "ocean_liner" {
+			description = "The current ocean liner itself, including its deck and nearby water. Use this for additions requested on, aboard, beside or around the large ship."
+		}
+		anchors["scene"] = description
+	}
 	total := 0
 	for _, item := range current.Objects {
 		anchors[item.Type] = "Existing " + item.Type + " as the location reference, not a new addition."
@@ -83,8 +90,14 @@ func (c Composer) ComposeAddition(ctx context.Context, request string, current S
 			continue
 		}
 		delta.Objects = append(delta.Objects, ObjectSpec{Type: asset.name, Count: count, Confidence: answer.Confidence})
-		spatial[asset.name+"_anchor"] = jevloop.ChoiceQuestion{
-			Instructions: fmt.Sprintf("For NEW %s objects requested by `request`, which existing type in `existing_objects` is the spatial reference? E.g. 'two trees beside the pond' -> pond. No explicit reference -> none. Do not select a reference just because it exists.", asset.name), Criteria: anchors}
+		// Jev Choice questions require at least two criteria. An empty standard
+		// scene only has `none`, so omit its anchor question and default below.
+		// Large procedural worlds expose `scene` as a semantic anchor because
+		// their generated geometry is intentionally absent from Objects.
+		if len(anchors) > 1 {
+			spatial[asset.name+"_anchor"] = jevloop.ChoiceQuestion{
+				Instructions: fmt.Sprintf("For NEW %s objects requested by `request`, which existing object type or generated scene is the spatial reference? E.g. 'two trees beside the pond' -> pond; 'people on the large ship' -> scene. No explicit reference -> none. Do not select a reference just because it exists.", asset.name), Criteria: anchors}
+		}
 		spatial[asset.name+"_placement"] = jevloop.ChoiceQuestion{
 			Instructions: fmt.Sprintf("Which spatial direction does `request` specify for the NEW %s objects, relative to the named reference or scene center? Default auto. Interpret beside/旁边 as auto, behind/后面 as background, in front/前面 as foreground.", asset.name), Criteria: directions}
 		spatial[asset.name+"_requested"] = jevloop.ChoiceQuestion{
@@ -116,7 +129,10 @@ func (c Composer) ComposeAddition(ctx context.Context, request string, current S
 		if total > 400 {
 			return Spec{}, fmt.Errorf("addition would exceed the 400 object limit")
 		}
-		anchor := positions.Answers[item.Type+"_anchor"].Choice
+		anchor := "none"
+		if answer, ok := positions.Answers[item.Type+"_anchor"]; ok {
+			anchor = answer.Choice
+		}
 		placement := positions.Answers[item.Type+"_placement"].Choice
 		if _, ok := anchors[anchor]; !ok {
 			return Spec{}, fmt.Errorf("invalid addition anchor")

@@ -260,6 +260,20 @@ test("append packing respects moved and resized anchors without changing old obj
   }
   assert.throws(()=>appendLayout([{type:"house",width:100,depth:100,index:0,count:1}],{items:[],landRadius:5},{environment:"coast"},rng()),/No clear space/);
 });
+test("ocean-liner additions place people aboard and boats beside the hull",async()=>{
+  const {appendLayout}=await import("./layout.js");
+  const current={largeWorld:true,worldFamily:"ocean_liner",landRadius:54,items:[
+    {type:"liner_superstructure",x:-4,z:0,width:64,depth:12,height:6},
+    {type:"deck_rail",x:0,z:-8.2,width:106,depth:.35,height:1},
+    {type:"deck_rail",x:0,z:8.2,width:106,depth:.35,height:1},
+  ]};
+  const person={type:"person",group:"people",anchor:"scene",placement:"auto",index:0,count:2,width:.7,depth:.7,height:1.8};
+  const boat={type:"boat",group:"vehicle",anchor:"scene",placement:"auto",index:0,count:2,width:3,depth:1.5,height:1};
+  const [addedPerson]=appendLayout([person],current,{environment:"ocean"},rng(9));
+  const [addedBoat]=appendLayout([boat],{...current,items:[...current.items,addedPerson]},{environment:"ocean"},rng(9));
+  assert.ok(Math.abs(addedPerson.x)<54&&Math.abs(addedPerson.z)<8,"person should stand on the liner deck");
+  assert.ok(Math.abs(addedBoat.x)<45&&Math.abs(addedBoat.z)>10,"boat should float beside the hull");
+});
 
 test("floating toolbar stays near the object and within desktop and phone viewports",async()=>{
   const {toolbarPosition}=await import("./editing.js");
