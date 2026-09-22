@@ -25,6 +25,7 @@ test("hierarchical city plans expand into large navigable worlds",()=>{
     assert.ok(city.stats.roads>=6,`${archetype} road network`);
     assert.ok(Object.values(city.stats.districts).filter(Boolean).length>=3,`${archetype} needs several districts`);
     assert.equal(city.layout.items.length,city.stats.buildings+1);
+    assert.ok(city.layout.items.every(item=>item.editable!==false),"city buildings and landmarks should be individually editable");
     assert.ok(city.layout.landRadius>45,"city must be much larger than a diorama");
     assert.equal(city.landscape.heightAt(10,10),.18);
     const bounds=new THREE.Box3().setFromObject(city.group);
@@ -59,6 +60,7 @@ test("large scene families expand semantic plans into distinct randomized worlds
     assert.ok(first.layout.sceneExtent>=(spec.scenePack==="interior"?30:76));
     assert.ok(first.layout.avatarScale<1);
     assert.ok(first.layout.items.length>4);
+    assert.ok(first.layout.items.every(item=>item.editable!==false),`${spec.scenePack} entities should be individually editable`);
     const spawn=findLargeWorldSpawn(first.layout,first.landscape.heightAt,.34*first.layout.avatarScale);
     assert.equal(collidesInLargeWorld(spawn.x,spawn.z,first.layout.items,.34*first.layout.avatarScale),false);
     assert.ok(Math.hypot(spawn.x,spawn.z)<first.layout.landRadius);
@@ -260,6 +262,9 @@ test("manual moves preserve asset scale and orientation, track terrain and keep 
   assert.deepEqual([item.pool.position.x,item.pool.position.z],[8,-3]);
   moveItem({...item,type:"boat"},20,5,{environment:"ocean"},heightAt);
   assert.equal(model.position.y,-.42);
+  const elevated={type:"liner_funnel",model:new THREE.Group(),x:0,z:0,elevationOffset:7};
+  moveItem(elevated,3,4,{environment:"ocean"},()=>5.9);
+  assert.ok(Math.abs(elevated.model.position.y-12.908)<1e-9,"large-world editing should preserve an asset's deck elevation");
 });
 
 test("editing reroutes paths without replacing terrain or accumulating path meshes",()=>{

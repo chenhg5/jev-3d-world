@@ -38,6 +38,9 @@ locally. No text-generating LLM is required.
   Daytime scenes do not infer a moon from a festival alone.
 - Landscape/Overview camera controls, orbit, pan and zoom, searchable asset previews, example prompts and
   per-request timing and token usage.
+- Generated entities inside large presets are individually editable. Select a
+  city building, dinosaur, ship component, medieval structure, room furnishing
+  or occupant to move, rotate, resize, reset or delete it.
 - Procedural scene music begins in Explore mode. Each scene family and variant
   gets a deterministic ambient melody without downloading audio assets.
 - A fresh variation seed for each composition.

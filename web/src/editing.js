@@ -5,7 +5,7 @@ import { objectElevation } from "./landscape.js";
 export function moveItem(item, x, z, spec, heightAt) {
   item.x = x;
   item.z = z;
-  item.model.position.set(x, objectElevation(item, spec, heightAt), z);
+  item.model.position.set(x, objectElevation(item, spec, heightAt) + (item.elevationOffset ?? 0), z);
   if (item.pool) item.pool.position.set(x, heightAt(x, z) + .05, z);
   item.model.updateMatrixWorld(true);
 }
@@ -287,7 +287,10 @@ export function createSceneEditor({ canvas, camera, controls, scene, panel, labe
     setItems(next, nextSpec, nextHeightAt, extent) {
       items = next; spec = nextSpec; heightAt = nextHeightAt; limit = extent * .9;
       roots = new Map(items.map(item => [item.model, item]));
-      items.forEach(item => { item.original ??= { x: item.x, z: item.z, scale: item.model.scale.clone(), rotation: item.model.rotation.y }; });
+      items.forEach(item => {
+        item.elevationOffset ??= item.model.position.y - objectElevation(item, spec, heightAt);
+        item.original ??= { x: item.x, z: item.z, scale: item.model.scale.clone(), rotation: item.model.rotation.y };
+      });
     },
     setEnabled(value) { if (!value) { finish(true); select(null); } enabled = value; },
     update() { if (selected) { outline.setFromObject(selected.model); positionPanel(); } },

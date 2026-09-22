@@ -290,7 +290,7 @@ export function createMetropolis(spec,random=Math.random) {
       const width=lot*(.62+random()*.18),depth=lot*(.62+random()*.18);
       const model=makeBuilding({x:bx,z:bz,width,depth,height,style:plan.archetype,palette,random,index:buildingIndex});
       group.add(model);
-      items.push({type:"city_building",group:"architecture",district,model,x:bx,z:bz,width,depth,height,label:`${district} building · ${buildingIndex+1}`,index:buildingIndex,count:1,editable:false});
+      items.push({type:"city_building",group:"architecture",district,model,x:bx,z:bz,width,depth,height,label:`${district} building · ${buildingIndex+1}`,index:buildingIndex,count:1,editable:true});
       buildingIndex++;
     }
     // A restrained tree rhythm along block corners creates readable streets.
@@ -302,7 +302,7 @@ export function createMetropolis(spec,random=Math.random) {
   const landmarkHeight=(plan.density==="megacity"?88:72)*(plan.archetype==="sunbelt"?.82:1);
   const landmark=makeLandmark(plan.landmark,palette,landmarkPosition.x,landmarkPosition.z,landmarkHeight);
   group.add(landmark);
-  items.push({type:"city_landmark",group:"landmark",model:landmark,x:landmarkPosition.x,z:landmarkPosition.z,width:13,depth:13,height:landmarkHeight,label:"City landmark",index:0,count:1,editable:false});
+  items.push({type:"city_landmark",group:"landmark",model:landmark,x:landmarkPosition.x,z:landmarkPosition.z,width:13,depth:13,height:landmarkHeight,label:"City landmark",index:0,count:1,editable:true});
   addTrees(group,treePoints,palette);
   const trafficCount=addTraffic(group,plan,{x:roadPositionsX,z:roadPositionsZ},extent,palette,random);
 

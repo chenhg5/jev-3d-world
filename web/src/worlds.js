@@ -15,7 +15,7 @@ function landscapeContract(group,heightAt,extent){
 }
 function item(model,type,group,x,z,width,depth,height,index=0){
   model.name=`${type}-${index}`;
-  return {model,type,group,x,z,width,depth,height,index,count:1,label:type.replaceAll("_"," "),editable:false};
+  return {model,type,group,x,z,width,depth,height,index,count:1,label:`${type.replaceAll("_"," ")} · ${index+1}`,editable:true};
 }
 function seededPick(random,values){return values[Math.floor(random()*values.length)];}
 
@@ -38,11 +38,12 @@ function createOceanLiner(spec,random){
   const waterGroup=new THREE.Group();waterGroup.name="liner-ocean";group.add(waterGroup);
   const waterMat=standard(plan.topology==="storm_passage"?0x173744:0x307f98,{roughness:.2,metalness:.26});
   const water=new THREE.Mesh(new THREE.PlaneGeometry(320,240,30,20),waterMat);water.rotation.x=-Math.PI/2;water.position.y=-.25;water.receiveShadow=true;waterGroup.add(water);
-  const ship=new THREE.Group();ship.name="procedural-ocean-liner";group.add(ship);
-  ship.add(linerHull(standard(0x202a31,{roughness:.54,metalness:.14})));
-  ship.add(box(98,.42,16,standard(0xe1d9c8),-1,5.45,0));
+  const ship=new THREE.Group(),items=[];ship.name="procedural-ocean-liner";group.add(ship);
+  const vessel=new THREE.Group();vessel.name="liner-hull-and-deck";
+  vessel.add(linerHull(standard(0x202a31,{roughness:.54,metalness:.14})));
+  vessel.add(box(98,.42,16,standard(0xe1d9c8),-1,5.45,0));ship.add(vessel);
+  const vesselItem=item(vessel,"ocean_liner_hull","platform",0,0,112,18,6,0);vesselItem.collidable=false;items.push(vesselItem);
   const layers={elegant:2,grand:3,monumental:4}[plan.density]||3;
-  const items=[];
   for(let level=0;level<layers;level++){
     const width=64-level*7+(random()-.5)*3,depth=12-level*1.1+(random()-.5)*.7,height=2.2;
     const model=new THREE.Group();model.add(box(width,height,depth,standard(level%2?0xf0e9dc:0xd4d8d5),0,0,0));
@@ -62,13 +63,18 @@ function createOceanLiner(spec,random){
     funnel.add(cylinder(2.15,2.35,5.7,standard(0xc58d45),0,0,0,16));
     funnel.add(cylinder(2.18,2.18,1.05,standard(0x202427),0,5.65,0,16));
     funnel.position.set(x,5.8+layers*2.15,0);ship.add(funnel);
+    items.push(item(funnel,"liner_funnel","landmark",x,0,4.7,4.7,6.7,i));
   }
   const boatCount=plan.population==="evacuation"?18:12;
   for(let i=0;i<boatCount;i++){
     const side=i%2?1:-1,x=-38+Math.floor(i/2)*13;
     const boat=box(7,.7,1.55,standard(0xd2b067),x,8.2,side*7.1);boat.rotation.z=side*.06;ship.add(boat);
+    items.push(item(boat,"lifeboat","vehicle",x,side*7.1,7,1.55,.7,i));
   }
-  for(const x of [-45,42]){const mast=cylinder(.25,.34,13,standard(0x4e4035),x,7,0,8);ship.add(mast);}
+  for(const [index,x] of [-45,42].entries()){
+    const mast=cylinder(.25,.34,13,standard(0x4e4035),x,7,0,8);ship.add(mast);
+    items.push(item(mast,"liner_mast","landmark",x,0,.7,.7,13,index));
+  }
   const barriers=[
     {x:0,z:-8.2,w:106,d:.35},{x:0,z:8.2,w:106,d:.35},{x:-52.5,z:0,w:.35,d:16},{x:51.5,z:0,w:.35,d:16},
   ];
@@ -81,10 +87,12 @@ function createOceanLiner(spec,random){
     for(let i=0;i<5;i++){
       const ice=new THREE.Mesh(new THREE.DodecahedronGeometry(4+random()*4,1),standard(0xd7eef0));
       ice.scale.set(1.5,.8+random(),1);ice.position.set(-75+i*35,-.1,(i%2?1:-1)*(28+random()*24));ice.castShadow=true;group.add(ice);
+      const size=new THREE.Box3().setFromObject(ice).getSize(new THREE.Vector3());items.push(item(ice,"iceberg","terrain",ice.position.x,ice.position.z,size.x,size.z,size.y,i));
     }
   }
   if(plan.topology==="harbor_departure"){
     const dock=box(100,.8,12,standard(0x6c6257),0,.2,-25);group.add(dock);
+    items.push(item(dock,"harbor_dock","architecture",0,-25,100,12,.8,0));
   }
   const heightAt=()=>5.9;
   const landscape=landscapeContract(waterGroup,heightAt,320);
@@ -140,7 +148,7 @@ function createPrehistoric(spec,random){
   const plan=spec.world||{},extent={open:100,lush:120,primeval:138}[plan.density]||120;
   const group=new THREE.Group();group.name="prehistoric-scene-pack";
   const groundGroup=new THREE.Group();groundGroup.name="prehistoric-landscape";group.add(groundGroup);
-  const heightAt=(x,z)=>Math.sin(x*.045)*.25+Math.cos(z*.052)*.22;
+  const heightAt=(x,z)=>Math.sin(x*.045)*.25+Math.cos(z*.052)*.22,items=[];
   groundGroup.add(terrainPlane(extent,heightAt,plan.hazard==="eruption"?0x46523a:0x426947));
   if(plan.topology==="river_corridor"){
     const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(-extent*.5,.12,-20),new THREE.Vector3(-20,.12,4),new THREE.Vector3(18,.12,-5),new THREE.Vector3(extent*.5,.12,18)]);
@@ -150,21 +158,29 @@ function createPrehistoric(spec,random){
   const landmarkX=-extent*.3,landmarkZ=-extent*.28;
   if(plan.landmark==="stone_arch"){
     const arch=new THREE.Mesh(new THREE.TorusGeometry(10,2.3,10,30,Math.PI),standard(0x615c4d));arch.position.set(landmarkX,2,landmarkZ);arch.rotation.z=Math.PI;arch.castShadow=true;group.add(arch);
+    items.push(item(arch,"stone_arch","landmark",landmarkX,landmarkZ,20,4.6,12,0));
   }else{
     const volcanic=plan.landmark==="volcano"||plan.hazard==="eruption";
     const mountain=new THREE.Mesh(new THREE.ConeGeometry(volcanic?15:19,volcanic?28:22,9),standard(volcanic?0x403a37:0x52604b));
     mountain.position.set(landmarkX,(volcanic?28:22)/2,landmarkZ);mountain.castShadow=true;group.add(mountain);
+    items.push(item(mountain,volcanic?"volcano":"mountain","terrain",landmarkX,landmarkZ,volcanic?30:38,volcanic?30:38,volcanic?28:22,0));
     if(volcanic){const crater=new THREE.PointLight(0xff6b2d,35,45);crater.position.set(landmarkX,27,landmarkZ);group.add(crater);}
   }
   if(plan.feature==="park_gate"){
     const gate=new THREE.Group();gate.add(box(16,2.2,1.4,standard(0x4a3b2e),0,0,0),box(2,9,2,standard(0x66513a),-8,0,0),box(2,9,2,standard(0x66513a),8,0,0));gate.position.set(0,0,20);group.add(gate);
+    items.push(item(gate,"park_gate","architecture",0,20,18,2,9,0));
   }else if(plan.feature==="research_outpost"){
     const outpost=new THREE.Group();outpost.add(box(13,3.5,7,standard(0xa6aa9c),0,0,0),box(5,2,4,standard(0x56717a),0,3.5,0));outpost.position.set(0,heightAt(0,20),20);group.add(outpost);
+    items.push(item(outpost,"research_outpost","architecture",0,20,13,7,5.5,0));
   }else if(plan.feature==="nesting_ground"){
-    for(let i=0;i<12;i++){const egg=new THREE.Mesh(new THREE.SphereGeometry(.55,10,8),standard(0xd8d0ad));egg.scale.y=1.35;egg.position.set((random()-.5)*10,.65,(random()-.5)*8+12);group.add(egg);}
+    for(let i=0;i<12;i++){
+      const egg=new THREE.Mesh(new THREE.SphereGeometry(.55,10,8),standard(0xd8d0ad));egg.scale.y=1.35;egg.position.set((random()-.5)*10,.65,(random()-.5)*8+12);group.add(egg);
+      items.push(item(egg,"dinosaur_egg","decor",egg.position.x,egg.position.z,1.1,1.1,1.5,i));
+    }
   }else{
     const cliff=box(20,16,7,standard(0x565c4d),0,0,-28);group.add(cliff);
     const falls=box(6,14,.3,standard(0x75c5d1,{roughness:.2,transparent:true,opacity:.82}),0,1,-24.4);group.add(falls);
+    items.push(item(cliff,"waterfall_cliff","terrain",0,-28,20,7,16,0),item(falls,"waterfall","water",0,-24.4,6,.3,14,0));
   }
   const mixes={
     herbivore_herd:[["sauropod",3,1],["triceratops",6,.75]],
@@ -172,7 +188,7 @@ function createPrehistoric(spec,random){
     mixed_ecosystem:[["sauropod",2,.9],["triceratops",4,.7],["trex",1,.9],["raptor",5,.5]],
     giant_dominant:[["sauropod",1,1.5],["triceratops",3,.65]],
   };
-  const population=mixes[plan.population]||mixes.mixed_ecosystem,items=[];let index=0;
+  const population=mixes[plan.population]||mixes.mixed_ecosystem;let index=0;
   for(const [species,count,scale] of population)for(let i=0;i<count;i++){
     const angle=(index+1)*2.399,radius=index===0?12:7+Math.sqrt(index+1)*5.2,x=index===0?10:Math.cos(angle)*radius,z=index===0?10:Math.sin(angle)*radius;
     const model=dinosaur(species,scale,index===0?0x91a958:seededPick(random,[0x557b48,0x6f7847,0x786044,0x456b59]));model.position.set(x,heightAt(x,z),z);model.rotation.y=random()*6.28;group.add(model);
@@ -195,12 +211,13 @@ function createMedievalCity(spec,random){
   const winter=plan.hazard==="winter",palette={walls:winter?[0x9a9b98,0x777b7d]:[0x887966,0xa38b6d,0x71675d],roof:winter?0x4d5960:0x5d352c};
   const group=new THREE.Group();group.name="medieval-city-scene-pack";
   const groundGroup=new THREE.Group();groundGroup.name="medieval-landscape";group.add(groundGroup);
-  const heightAt=()=>.12;groundGroup.add(terrainPlane(extent,heightAt,winter?0xdce4e4:0x607046));
+  const heightAt=()=>.12,items=[];groundGroup.add(terrainPlane(extent,heightAt,winter?0xdce4e4:0x607046));
   if(plan.topology==="river_crossing"||plan.archetype==="river_fortress"){
     const river=box(12,.08,extent,standard(0x397f94,{roughness:.26}),-18,.1,0);groundGroup.add(river);
     const bridge=box(18,1.1,6,standard(0x81786c),-18,.14,0);group.add(bridge);
+    items.push(item(bridge,"stone_bridge","architecture",-18,0,18,6,1.1,0));
   }
-  const items=[],wallMaterial=standard(0x716d65),wallRadius=extent*.36;
+  const wallMaterial=standard(0x716d65),wallRadius=extent*.36;
   const wallSegments=20;
   for(let i=0;i<wallSegments;i++){
     const angle=i/wallSegments*Math.PI*2,x=Math.cos(angle)*wallRadius,z=Math.sin(angle)*wallRadius,length=2*Math.PI*wallRadius/wallSegments+1;
@@ -224,13 +241,18 @@ function createMedievalCity(spec,random){
   group.add(citadel);items.push(item(citadel,"citadel","landmark",0,0,20,18,keepHeight+10,0));
   if(plan.feature==="market_square"){
     const square=box(17,.18,13,standard(0xa79a7f),0,.12,20);group.add(square);
-    for(let i=0;i<8;i++){const stall=box(2,1.5,1.5,standard(i%2?0x9d4d42:0xd2aa55),(i-3.5)*2.2,.3,20+(i%2?4:-4));group.add(stall);}
+    for(let i=0;i<8;i++){
+      const x=(i-3.5)*2.2,z=20+(i%2?4:-4),stall=box(2,1.5,1.5,standard(i%2?0x9d4d42:0xd2aa55),x,.3,z);group.add(stall);
+      items.push(item(stall,"market_stall","decor",x,z,2,1.5,1.5,i));
+    }
   }else if(plan.feature==="great_hall"){
-    const hall=box(25,7,10,standard(0x8d8171),0,.12,19);group.add(hall);
-    const roof=new THREE.Mesh(new THREE.ConeGeometry(14,6,4),standard(palette.roof));roof.position.set(0,10.1,19);roof.rotation.y=Math.PI/4;group.add(roof);
+    const hall=new THREE.Group();hall.add(box(25,7,10,standard(0x8d8171),0,0,0));
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(14,6,4),standard(palette.roof));roof.position.set(0,10,0);roof.rotation.y=Math.PI/4;hall.add(roof);hall.position.set(0,.12,19);group.add(hall);
+    items.push(item(hall,"great_hall","landmark",0,19,25,14,13,0));
   }else if(plan.feature==="temple_close"){
-    const temple=box(10,11,18,standard(0x918879),0,.12,20);group.add(temple);
-    const spire=new THREE.Mesh(new THREE.ConeGeometry(3,10,8),standard(palette.roof));spire.position.set(0,16,20);group.add(spire);
+    const temple=new THREE.Group();temple.add(box(10,11,18,standard(0x918879),0,0,0));
+    const spire=new THREE.Mesh(new THREE.ConeGeometry(3,10,8),standard(palette.roof));spire.position.set(0,16,0);temple.add(spire);temple.position.set(0,.12,20);group.add(temple);
+    items.push(item(temple,"temple","landmark",0,20,10,18,21,0));
   }
   if(plan.hazard==="fire"){
     for(let i=0;i<5;i++){const light=new THREE.PointLight(0xff642f,22,18);light.position.set((random()-.5)*30,3,(random()-.5)*30);group.add(light);}

@@ -98,14 +98,19 @@ function deleteSceneItem(item) {
   const removed=new Set(), disposedGeometry=new Set(), disposedMaterial=new Set();
   for (const root of [item.model,item.pool].filter(Boolean)) {
     root.removeFromParent();
+    const activeGeometry=new Set(),activeMaterial=new Set();
+    world.traverse(child=>{
+      if(child.geometry)activeGeometry.add(child.geometry);
+      for(const mat of [child.material].flat().filter(Boolean))activeMaterial.add(mat);
+    });
     root.traverse(child=>{
       removed.add(child);
       if (child.isLight || child.isInstancedMesh) child.dispose?.();
-      if (child.geometry && !disposedGeometry.has(child.geometry)) {
+      if (child.geometry && !activeGeometry.has(child.geometry) && !disposedGeometry.has(child.geometry)) {
         disposedGeometry.add(child.geometry);child.geometry.dispose();
       }
       for (const mat of [child.material].flat().filter(Boolean)) {
-        if (!disposedMaterial.has(mat)) { disposedMaterial.add(mat);mat.dispose(); }
+        if (!activeMaterial.has(mat) && !disposedMaterial.has(mat)) { disposedMaterial.add(mat);mat.dispose(); }
       }
     });
   }
@@ -166,7 +171,9 @@ const objectColorHex={red:0xd94b43,blue:0x357bd1,green:0x3f9259,yellow:0xe4bd38,
 function styledColors(base,name){return objectColorHex[name]?{...base,object:objectColorHex[name]}:base;}
 function objectSpecsFromItems(items){
   const grouped=new Map();
-  for(const item of items.filter(entry=>entry.editable!==false)){
+  // Large scene packs also register procedural buildings and structures for
+  // editing. Only catalog-backed assets belong in the server's append context.
+  for(const item of items.filter(entry=>entry.editable!==false&&assetDefinition(entry.type))){
     if(!grouped.has(item.type))grouped.set(item.type,{type:item.type,count:0,placement:"auto",colors:[]});
     const object=grouped.get(item.type);object.count++;object.colors.push(item.color||"auto");
   }
@@ -383,9 +390,11 @@ function renderLargeScenePack(spec, random) {
   host.dataset.landscape=spec.scenePack;
   host.dataset.pathCount="0";
   host.dataset.worldStats=JSON.stringify(generated.stats);
-  host.dataset.renderedCounts="{}";
+  const editable=generated.layout.items.filter(item=>item.editable!==false);
+  const renderedCounts=editable.reduce((counts,item)=>(counts[item.type]=(counts[item.type]??0)+1,counts),{});
+  host.dataset.renderedCounts=JSON.stringify(renderedCounts);
   updateLayoutData();
-  editor.setItems([],spec,landscape.heightAt,landscape.extent);
+  editor.setItems(editable,spec,landscape.heightAt,landscape.extent);
   world.traverse(child=>{
     if(child.isDirectionalLight){
       const radius=generated.layout.landRadius+8;

@@ -49,7 +49,7 @@ export function normalizeControlCode(event) {
 }
 
 export function collidesWithScene(x, z, items, radius = .34) {
-  return items.some(item => solidGroups.has(item.group) &&
+  return items.some(item => item.collidable !== false && solidGroups.has(item.group) &&
     Math.abs(x - item.x) < item.width / 2 + radius &&
     Math.abs(z - item.z) < item.depth / 2 + radius);
 }
