@@ -780,8 +780,22 @@
     "type": "bird",
     "label": "鸟",
     "group": "animal",
-    "height": 0.4,
-    "description": "A bird / 鸟."
+    "height": 0.65,
+    "description": "A small flying bird / 鸟 / 小鸟 with spread wings. Use for generic birds, not an explicitly requested eagle."
+  },
+  {
+    "type": "eagle",
+    "label": "老鹰",
+    "group": "animal",
+    "height": 1.1,
+    "description": "A large soaring eagle / 老鹰 / 鹰 with broad wings. Use only when an eagle or large bird of prey is requested."
+  },
+  {
+    "type": "kite",
+    "label": "风筝",
+    "group": "air",
+    "height": 2.6,
+    "description": "A colorful diamond kite / 风筝 flying in the sky with a long string and ribbon tail."
   },
   {
     "type": "fish",

@@ -6,7 +6,7 @@ locally. No text-generating LLM is required.
 
 ## Features
 
-- 114 procedural asset types: architecture, plants, terrain, people, animals,
+- 116 procedural asset types: architecture, plants, terrain, people, animals,
   vehicles, boats, racing circuits, playground equipment and more.
 - Hierarchical metropolis generation for downtown and open-world city prompts.
   Jev chooses an urban archetype, district pattern, road network, density,
@@ -43,6 +43,9 @@ locally. No text-generating LLM is required.
   or occupant to move, rotate, resize, reset or delete it.
 - Procedural scene music begins in Explore mode. Each scene family and variant
   gets a deterministic ambient melody without downloading audio assets.
+- Explore mode brings suitable assets to life: cars and city traffic drive,
+  people and animals wander, race cars follow their circuit, birds and eagles
+  circle overhead, and kites drift in the wind.
 - A fresh variation seed for each composition.
 
 ## Requirements

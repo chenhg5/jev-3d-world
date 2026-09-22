@@ -1,4 +1,5 @@
 const people = new Set(["people", "animal"]);
+const airborne = new Set(["bird","eagle","kite"]);
 const waterLife = new Set(["boat","fishing_boat","ship","submarine","buoy","fish","iceberg"]);
 const groundWater = new Set(["pond","river","fountain"]);
 
@@ -23,6 +24,7 @@ export function appendLayout(items, current, spec, random) {
     const angles = {left:-Math.PI/2,right:Math.PI/2,foreground:0,background:Math.PI};
     const angle = angles[item.placement] ?? (item.index/Math.max(1,item.count)*Math.PI*2 + random()*.5);
     let desired = {x:(anchor?.x??0)+Math.sin(angle)*distance,z:(anchor?.z??0)+Math.cos(angle)*distance};
+    if(airborne.has(item.type))desired={x:Math.sin(angle)*current.landRadius*.45,z:Math.cos(angle)*current.landRadius*.45};
     if (anchor && waterShare(anchor)) desired = {x:anchor.x,z:anchor.z};
     if (!anchor && item.placement === "center") desired = {x:0,z:0};
     // The liner's walkable world is a long deck rather than a circular island.
@@ -51,6 +53,7 @@ export function appendLayout(items, current, spec, random) {
       best=candidate;break;
     }
     if (!best) throw new Error("No clear space for these additions. Move objects apart or add fewer objects.");
+    if(airborne.has(item.type))best.collidable=false;
     if (anchor && (["tent","chair"].includes(item.type) || item.group === "people"))
       best.facing=Math.atan2(anchor.x-best.x,anchor.z-best.z);
     placed.push(best);added.push(best);
@@ -75,6 +78,7 @@ export function planLayout(items,spec,random) {
   let buildingIndex=0,personIndex=0,plantIndex=0;
   const semanticPosition=item=>{
     const {group,type,index,count}=item;
+    if(airborne.has(type)){const a=index/Math.max(1,count)*Math.PI*2+.55;return{x:Math.cos(a)*extent*.42,z:Math.sin(a)*extent*.42};}
     if(type==="race_track")return {x:0,z:0};
     if(type==="race_car"){
       const track=placed.find(p=>p.type==="race_track");
@@ -185,6 +189,7 @@ export function planLayout(items,spec,random) {
       const edge=Math.max(extent,...placed.map(p=>p.x+p.width/2));
       best={...item,x:edge+item.width/2+1,z:desired.z};
     }
+    if(airborne.has(item.type))best.collidable=false;
     placed.push(best);
   }
   for(const item of placed){

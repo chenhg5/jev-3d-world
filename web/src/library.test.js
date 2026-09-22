@@ -10,6 +10,7 @@ import {createMetropolis} from "./city.js";
 import {createLargeWorld} from "./worlds.js";
 import {findPlayerSpawn as findLargeWorldSpawn,collidesWithScene as collidesInLargeWorld} from "./explore.js";
 import {musicPlanForSpec} from "./music.js";
+import {advanceSceneMotion,advanceTrafficMotion,motionKind} from "./motion.js";
 
 const colors={fabric:0xd7b982,wood:0x6d4930,leaf:0x315f42,accent:0xffa84c,stone:0x737772};
 function rng(seed=42){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
@@ -153,6 +154,23 @@ test("race cars use explicit instance colors and occupy the racing circuit",()=>
     assert.ok(Number.isFinite(car.facing));
   }
   for(const model of [blue,red])model.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
+});
+test("airborne assets fly and Explore motion advances vehicles and city traffic",()=>{
+  assert.equal(motionKind("bird"),"flying");assert.equal(motionKind("eagle"),"flying");assert.equal(motionKind("kite"),"flying");
+  const eagle=createAsset("eagle",colors,rng(12)),car=createAsset("car",colors,rng(13));
+  const flying={type:"eagle",group:"animal",model:eagle,x:0,z:0,width:1.8,depth:1.1,height:1.1,index:0,elevationOffset:6,collidable:false};
+  const driving={type:"car",group:"vehicle",model:car,x:-5,z:0,width:2.7,depth:1.2,height:1.4,index:0,
+    motion:{kind:"vehicle",heading:Math.PI/2,speed:2,turnIn:10,phase:0,wings:[]}};
+  const layout={items:[flying,driving],landRadius:24};
+  advanceSceneMotion(layout,()=>0,17,.5,1);
+  assert.notEqual(flying.x,0);assert.ok(flying.model.position.y>5,"eagle should remain above the ground");
+  assert.ok(driving.x>-5,"car should drive forward while exploring");
+  const body=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial(),1);
+  const roofs=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial(),1);
+  body.userData.trafficMotion={roofs,states:[{horizontal:true,road:2,along:0,direction:1,speed:4}],extent:40};
+  advanceTrafficMotion(body,.5);const matrix=new THREE.Matrix4();body.getMatrixAt(0,matrix);
+  assert.ok(Math.abs(new THREE.Vector3().setFromMatrixPosition(matrix).x-2)<1e-8,"city traffic should advance along its road");
+  for(const model of [eagle,car,body,roofs])model.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
 });
 test("mixed-scale city preserves every object and packs nonoverlapping footprints",()=>{
   const input=prepared([["building",8],["train",1],["station",1],["bicycle",5],["man",10],["tree",5],["bench",4]]);

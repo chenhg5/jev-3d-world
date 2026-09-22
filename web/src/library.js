@@ -316,13 +316,27 @@ export function createLibraryAsset(type, {colors, random, mesh, material}) {
       if(ship){box(2,.35,.75,cream,0,1.65);chimney(-.4,0,2.2);}
       else{rod([-1,.4,0],[-1,2.1,0],.035,brown);rod([-1,2,0],[.7,1.3,.7],.025,brown);}
     }
-  }else if(["dog","cat","horse","cow","sheep","deer","bird","fish"].includes(type)){
-    if(type==="bird"||type==="fish"){
-      const fish=type==="fish",body=ball(.35,fish?0xd9a75d:0x699ba6,0,.4,0);body.scale.set(1.4,.8,.6);
-      cyl(0,.13,.35,fish?0xd08a4e:0xe0b75f,.48,.4,0,4).rotation.z=-Math.PI/2;
-      const tail=box(.3,.4,.06,red,-.48,.4);tail.rotation.z=.4;
-      for(const z of [-.2,.2])ball(.035,dark,.2,.5,z);
-      if(!fish)for(const z of [-.3,.3]){const wing=ball(.28,0x588a99,-.1,.42,z);wing.scale.set(1,.15,1.3);}
+  }else if(type==="kite"){
+    const sail=box(1.15,1.15,.08,red,0,1.6);sail.rotation.z=Math.PI/4;sail.rotation.y=.16;
+    rod([0,1.6,0],[0,.1,0],.018,cream);
+    for(let i=0;i<4;i++){
+      const y=1.45-i*.36,side=i%2?1:-1;
+      const ribbon=box(.32,.06,.08,i%2?colors.accent:cream,side*.14,y);ribbon.rotation.z=side*.55;
+    }
+    g.userData.airborneAsset=true;
+  }else if(["dog","cat","horse","cow","sheep","deer","bird","eagle","fish"].includes(type)){
+    if(type==="bird"||type==="eagle"||type==="fish"){
+      const fish=type==="fish",eagle=type==="eagle",bodyColor=fish?0xd9a75d:eagle?0x63462f:0x699ba6;
+      const body=ball(eagle?.42:.35,bodyColor,0,.4,0);body.scale.set(eagle?1.7:1.4,.8,.6);
+      cyl(0,.13,eagle?.42:.35,fish?0xd08a4e:eagle?0xd8c5a2:0xe0b75f,eagle?.62:.48,.4,0,4).rotation.z=-Math.PI/2;
+      const tail=box(eagle?.42:.3,eagle?.48:.4,.06,fish?red:bodyColor,eagle?-.62:-.48,.4);tail.rotation.z=.4;
+      for(const z of [-.2,.2])ball(.035,dark,eagle?.3:.2,.5,z);
+      if(!fish)for(const side of [-1,1]){
+        const pivot=new THREE.Group(),wing=new THREE.Mesh(new THREE.SphereGeometry(eagle?.5:.28,10,6),material(eagle?0x75563b:0x588a99));
+        wing.scale.set(eagle?1.45:1,eagle?.12:.15,eagle?1.8:1.3);wing.position.z=side*(eagle?.45:.3);
+        pivot.position.set(-.08,.42,0);pivot.userData.flightWing=side;pivot.add(wing);g.add(pivot);
+      }
+      if(!fish)g.userData.airborneAsset=true;
     }else{
       const fur=type==="cow"?cream:type==="sheep"?0xe5e1d4:type==="cat"?0x9c9990:type==="dog"?0xb89b72:0xa07850;
       const body=ball(.5,fur,0,.7,0);body.scale.set(1.6,.8,.75);

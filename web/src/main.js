@@ -12,6 +12,7 @@ import { createSceneEditor } from "./editing.js";
 import { createExplorer } from "./explore.js";
 import { createMetropolis } from "./city.js";
 import { createLargeWorld } from "./worlds.js";
+import { advanceSceneMotion, advanceTrafficMotion } from "./motion.js";
 import "./style.css";
 
 const host = document.querySelector("#canvas-host");
@@ -87,6 +88,7 @@ const explorer = createExplorer({
   onActiveChange(value) {
     editor.setEnabled(!value);
     document.body.classList.toggle("exploring-scene",value);
+    if(!value)updateSceneAfterEdit();
     requestAnimationFrame(resize);
   },
   onStatus: setStatus,
@@ -375,7 +377,8 @@ function prepareItems(spec, colors, random) {
         const diameter = Math.hypot(size.x,size.z); size.x = diameter; size.z = diameter;
       }
       prepared.push({ type: objectSpec.type, group: definition.group, model, index, count: objectSpec.count,color,
-        placement: objectSpec.placement, anchor: objectSpec.anchor, width:size.x, depth:size.z, height:size.y });
+        placement: objectSpec.placement, anchor: objectSpec.anchor, width:size.x, depth:size.z, height:size.y,
+        ...(["bird","eagle","kite"].includes(objectSpec.type)&&!spec.preview?{flightHeight:objectSpec.type==="eagle"?7+random()*2:4.5+random()*2,collidable:false}:{}) });
     }
   }
   return prepared;
@@ -396,6 +399,7 @@ function renderLargeScenePack(spec, random) {
   updateLayoutData();
   editor.setItems(editable,spec,landscape.heightAt,landscape.extent);
   world.traverse(child=>{
+    if(child.userData.trafficMotion) animated.push(child);
     if(child.isDirectionalLight){
       const radius=generated.layout.landRadius+8;
       Object.assign(child.shadow.camera,{left:-radius,right:radius,top:radius,bottom:-radius,far:radius*5});
@@ -457,7 +461,7 @@ function renderScene(spec, promptText) {
   world.add(landscape.group);
   for (const item of layout.items) {
     const { model, type, x, z, index } = item;
-    model.position.set(x, objectElevation(item,spec,landscape.heightAt), z);
+    model.position.set(x, objectElevation(item,spec,landscape.heightAt)+(item.flightHeight??0), z);
     if (item.facing !== undefined) model.rotation.y = item.facing;
     model.name = type + "-" + index;
     world.add(model);
@@ -568,7 +572,7 @@ function appendScene(delta, promptText) {
     counts[type]=(counts[type]??0)+1;
     model.name=type+"-"+item.index;
     item.label=assetLabel(type)+" · "+(item.index+1);
-    model.position.set(x,objectElevation(item,currentSpec,landscape.heightAt),z);
+    model.position.set(x,objectElevation(item,currentSpec,landscape.heightAt)+(item.flightHeight??0),z);
     if (item.facing !== undefined) model.rotation.y=item.facing;
     world.add(model);
     model.traverse(child => {
@@ -733,6 +737,10 @@ function animate(timestamp = performance.now()) {
   const elapsed = (timestamp - animationStarted) / 1000;
   const delta = Math.min(.05, Math.max(0, timestamp - previousFrame) / 1000);
   previousFrame = timestamp;
+  let movingAssets=0;
+  if(explorer.active&&currentLayout&&landscape){
+    movingAssets+=advanceSceneMotion(currentLayout,landscape.heightAt,currentSpec?.variant??0,delta,elapsed);
+  }
   for (const object of animated) {
     if (object.userData.flame) {
       object.scale.y = 0.9 + Math.sin(elapsed * 8) * 0.11;
@@ -744,7 +752,9 @@ function animate(timestamp = performance.now()) {
     }
     if (object.userData.spin) object.rotation.z -= 0.008;
     if (object.userData.rotor) object.rotation.y += 0.08;
+    if(explorer.active&&object.userData.trafficMotion)movingAssets+=advanceTrafficMotion(object,delta);
   }
+  host.dataset.movingAssets=String(movingAssets);
   explorer.update(delta);
   if (!explorer.active && !editor.dragging) controls.update();
   if (!explorer.active) editor.update();

@@ -3,6 +3,7 @@ import { objectElevation } from "./landscape.js";
 
 // Keep layout coordinates and the rendered model in sync without changing its size or orientation.
 export function moveItem(item, x, z, spec, heightAt) {
+  delete item.motion;
   item.x = x;
   item.z = z;
   item.model.position.set(x, objectElevation(item, spec, heightAt) + (item.elevationOffset ?? 0), z);

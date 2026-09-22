@@ -175,14 +175,16 @@ function addTraffic(group,plan,roads,extent,palette,random) {
   const count=Math.round(setting.traffic*multiplier);
   const cars=new THREE.InstancedMesh(new THREE.BoxGeometry(1.35,.55,.7),mat(0xd85d49,{roughness:.55,metalness:.12}),count);
   const roofs=new THREE.InstancedMesh(new THREE.BoxGeometry(.72,.38,.64),mat(palette.glass,{roughness:.3,metalness:.2}),count);
-  const dummy=new THREE.Object3D();
+  const dummy=new THREE.Object3D(),states=[];
   for(let i=0;i<count;i++){
     const horizontal=i%2===0,choices=horizontal?roads.z:roads.x,road=choices[Math.floor(random()*choices.length)]||0,along=(random()-.5)*extent*.92;
+    states.push({horizontal,road,along,direction:random()>.5?1:-1,speed:2.2+random()*2.6});
     dummy.position.set(horizontal?along:road,horizontal?0:0,horizontal?road:along);dummy.position.y=.34;
     dummy.rotation.y=horizontal?0:Math.PI/2;dummy.updateMatrix();cars.setMatrixAt(i,dummy.matrix);
     dummy.position.y=.77;dummy.updateMatrix();roofs.setMatrixAt(i,dummy.matrix);
   }
   cars.castShadow=true;roofs.castShadow=true;group.add(cars,roofs);
+  cars.userData.trafficMotion={roofs,states,extent};
   return count;
 }
 
