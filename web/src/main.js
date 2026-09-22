@@ -269,11 +269,12 @@ function applyCamera(kind, random) {
     const jitter=(random()-.5)*.08;
     const wide=currentLayout.cameraProfile==="wide";
     const cityWide=currentLayout.cameraProfile==="city";
+    const interior=currentLayout.cameraProfile==="interior";
     const settings={
-      isometric:{position:[extent*(cityWide?.72:.58),extent*(cityWide?.66:.58),extent*(cityWide?.82:.67)],target:[0,targetY,0],fov:42},
-      cinematic:{position:[extent*(cityWide?.72:wide?.62:.47+jitter),extent*(cityWide?.34:wide?.28:.12),extent*(cityWide?.84:wide?.75:.56)],target:[0,targetY+(cityWide?1:3),-extent*(cityWide?0:.08)],fov:cityWide?48:wide?42:45},
+      isometric:{position:[extent*(interior?.58:cityWide?.72:.58),extent*(interior?.5:cityWide?.66:.58),extent*(interior?.72:cityWide?.82:.67)],target:[0,targetY,0],fov:42},
+      cinematic:{position:[extent*(interior?.52:cityWide?.72:wide?.62:.47+jitter),extent*(interior?.3:cityWide?.34:wide?.28:.12),extent*(interior?.72:cityWide?.84:wide?.75:.56)],target:[0,targetY+(interior?0:cityWide?1:3),-extent*(interior?0:cityWide?0:.08)],fov:interior?46:cityWide?48:wide?42:45},
       top_down:{position:[.1,extent*.92,.1],target:[0,0,0],fov:44},
-      eye_level:{position:[extent*.34,3.2,extent*.34],target:[0,targetY,0],fov:58},
+      eye_level:{position:[extent*(interior?.36:.34),interior?4.8:3.2,extent*(interior?.58:.34)],target:[0,interior?1.7:targetY,interior?-extent*.1:0],fov:interior?52:58},
     }[kind]||{position:[extent*.58,extent*.58,extent*.67],target:[0,targetY,0],fov:42};
     if(kind!=="top_down"&&currentLayout.cameraHeading){
       const [x,,z]=settings.position,angle=currentLayout.cameraHeading;
@@ -401,24 +402,25 @@ function renderScene(spec, promptText) {
   const colors = paletteMap[spec.palette] || paletteMap.natural;
   const environment = environmentMap[spec.environment] || environmentMap.meadow;
   const coastal = spec.environment === "ocean" || spec.environment === "coast";
-  const sky = skyColor(spec);
+  const interior=spec.scenePack==="interior";
+  const sky = interior?0x292825:skyColor(spec);
   scene.background = new THREE.Color(sky);
-  if(spec.environment !== "moon") world.add(createSky(spec));
-  scene.fog = spec.atmosphere === "mist"
+  if(!interior&&spec.environment !== "moon") world.add(createSky(spec));
+  scene.fog = interior?null:spec.atmosphere === "mist"
     ? new THREE.Fog(sky, 6, 20)
     : new THREE.Fog(sky, 15, 34);
-  skyMoon = createMoon(spec.moon);
+  skyMoon = interior?null:createMoon(spec.moon);
   if (skyMoon) world.add(skyMoon);
   host.dataset.moon = skyMoon ? spec.moon : "none";
   host.dataset.skyColor = scene.background.getHexString();
 
   addLighting(spec.lighting);
-  if ((spec.lighting === "night" || spec.lighting === "neon" || spec.environment === "moon") && spec.atmosphere !== "stars") {
+  if (!interior&&(spec.lighting === "night" || spec.lighting === "neon" || spec.environment === "moon") && spec.atmosphere !== "stars") {
     addStars(random);
   }
-  addAtmosphere(spec.atmosphere || "clear", colors, random);
+  if(!interior)addAtmosphere(spec.atmosphere || "clear", colors, random);
 
-  if(["metropolis","ocean_liner","prehistoric","medieval_city"].includes(spec.scenePack)){
+  if(["metropolis","ocean_liner","prehistoric","medieval_city","interior"].includes(spec.scenePack)){
     renderLargeScenePack(spec,random);
     return;
   }

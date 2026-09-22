@@ -108,6 +108,7 @@ func TestLargeWorldFamiliesUseCompactSemanticPlans(t *testing.T) {
 		{"ocean_liner", "a Titanic-like ocean liner crossing the Atlantic", "ocean"},
 		{"prehistoric", "a vast dinosaur reserve in a primeval jungle", "forest"},
 		{"medieval_city", "a huge fortified fantasy medieval capital", "meadow"},
+		{"interior", "a bright modern classroom with rows of desks", "interior"},
 	} {
 		t.Run(tc.pack, func(t *testing.T) {
 			spec, err := (Composer{Evaluator: worldPackEvaluator{tc.pack}}).ComposeVariant(context.Background(), tc.prompt, 31)

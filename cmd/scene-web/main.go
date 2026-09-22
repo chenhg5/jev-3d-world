@@ -61,7 +61,7 @@ func main() {
 			writeError(w, http.StatusBadRequest, "prompt must contain 3 to 600 characters")
 			return
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
 		defer cancel()
 		started := time.Now()
 		if input.Mode != "" && input.Mode != "replace" && input.Mode != "append" {
@@ -105,7 +105,7 @@ func main() {
 	server := &http.Server{
 		Addr: address, Handler: securityHeaders(mux),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second,
-		WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second,
+		WriteTimeout: 45 * time.Second, IdleTimeout: 60 * time.Second,
 	}
 	log.Printf("Jev Scene Composer listening on http://%s", address)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

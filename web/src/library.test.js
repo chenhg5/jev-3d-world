@@ -50,12 +50,13 @@ test("large scene families expand semantic plans into distinct randomized worlds
     {scenePack:"ocean_liner",world:{archetype:"classic_liner",topology:"ice_field",density:"grand",population:"passenger_day",feature:"promenade",hazard:"iceberg",landmark:"four_funnels"}},
     {scenePack:"prehistoric",world:{archetype:"jungle_reserve",topology:"river_corridor",density:"lush",population:"mixed_ecosystem",feature:"park_gate",hazard:"calm",landmark:"mountain_ring"}},
     {scenePack:"medieval_city",world:{archetype:"northern_keep",topology:"walled_hill",density:"thriving",population:"daily_life",feature:"market_square",hazard:"peaceful",landmark:"high_keep"}},
+    {scenePack:"interior",world:{archetype:"classroom",topology:"central_aisle",density:"furnished",population:"active",feature:"window_wall",hazard:"normal",landmark:"teaching_wall"}},
   ];
   for(const spec of cases){
     const first=createLargeWorld(spec,rng(4)),second=createLargeWorld(spec,rng(9));
     assert.equal(first.stats.family,spec.scenePack);
     assert.equal(first.layout.largeWorld,true);
-    assert.ok(first.layout.sceneExtent>=76);
+    assert.ok(first.layout.sceneExtent>=(spec.scenePack==="interior"?30:76));
     assert.ok(first.layout.avatarScale<1);
     assert.ok(first.layout.items.length>4);
     const spawn=findLargeWorldSpawn(first.layout,first.landscape.heightAt,.34*first.layout.avatarScale);
@@ -66,10 +67,23 @@ test("large scene families expand semantic plans into distinct randomized worlds
       assert.ok(Math.abs(spawn.z)<8.2,"liner spawn must stay on the passenger deck");
     }
     const bounds=new THREE.Box3().setFromObject(first.group),size=bounds.getSize(new THREE.Vector3());
-    assert.ok(size.x>70&&size.z>30,`${spec.scenePack} must occupy a large world`);
+    if(spec.scenePack==="interior")assert.ok(size.x>25&&size.z>18,"interior must be an explorable room");
+    else assert.ok(size.x>70&&size.z>30,`${spec.scenePack} must occupy a large world`);
     const signature=world=>world.layout.items.map(entry=>[entry.x,entry.z,entry.width,entry.depth,entry.model.rotation.y]).flat().join(",");
     assert.notEqual(signature(first),signature(second),`${spec.scenePack} should vary with the generation seed`);
     for(const world of [first,second])world.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
+  }
+});
+test("interior family builds distinct furnished assets for every supported room",()=>{
+  const rooms=["classroom","hospital_ward","office","apartment","restaurant","library","laboratory","gallery"];
+  for(const [index,archetype] of rooms.entries()){
+    const world=createLargeWorld({scenePack:"interior",world:{archetype,topology:["open_plan","central_aisle","split_zones","perimeter_rooms"][index%4],density:"furnished",population:"quiet",feature:"window_wall",hazard:"normal",landmark:index===3?"hearth":index===7?"display_piece":"communal_table"}},rng(index+31));
+    assert.equal(world.stats.room,archetype);
+    assert.ok(world.stats.stations>=12);
+    assert.ok(world.layout.items.some(entry=>entry.type.includes(archetype.split("_")[0])||["student_desk","workstation","sofa","dining_set","bookshelf","lab_bench","exhibit"].includes(entry.type)),`${archetype} furniture missing`);
+    assert.equal(world.layout.cameraProfile,"interior");
+    assert.equal(world.layout.roomBounds.width>world.layout.roomBounds.depth,true);
+    world.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
   }
 });
 test("scene music is deterministic per variant and changes across world families",()=>{
@@ -81,7 +95,9 @@ test("scene music is deterministic per variant and changes across world families
   assert.equal(ocean.beats,3);
   assert.equal(medieval.profile,"medieval");
   assert.notDeepEqual(ocean.melody,medieval.melody);
-  for(const plan of [ocean,medieval,musicPlanForSpec({environment:"forest",variant:7})]){
+  const interior=musicPlanForSpec({scenePack:"interior",variant:9,world:{archetype:"library"}});
+  assert.equal(interior.profile,"interior");
+  for(const plan of [ocean,medieval,interior,musicPlanForSpec({environment:"forest",variant:7})]){
     assert.ok(plan.bpm>=60&&plan.bpm<=100);
     assert.ok(plan.volume>0&&plan.volume<.2);
     assert.equal(plan.melody.length,plan.beats*4);

@@ -7,6 +7,40 @@ func worldQuestions(scenePack string) map[string]jevloop.ChoiceQuestion {
 		return jevloop.ChoiceQuestion{Instructions: instructions, Criteria: criteria}
 	}
 	switch scenePack {
+	case "interior":
+		return map[string]jevloop.ChoiceQuestion{
+			"world_archetype": q("Which indoor environment best matches the request?", map[string]string{
+				"classroom": "School classroom with desks, seats and a teaching wall.", "hospital_ward": "Hospital or clinic ward with beds and care equipment.",
+				"office": "Modern workplace with desks, screens and meeting areas.", "apartment": "Residential living and dining interior.",
+				"restaurant": "Restaurant or cafe dining room with tables and a service area.", "library": "Library or reading room with shelves and study tables.",
+				"laboratory": "Scientific laboratory with benches and instruments.", "gallery": "Museum or art gallery with exhibits and display walls.",
+			}),
+			"world_topology": q("Which floor-plan organization best supports the requested interior? Treat unspecified layout as a creative variation.", map[string]string{
+				"open_plan": "One broad flexible room with furniture islands.", "central_aisle": "A strong central circulation aisle with repeated stations on both sides.",
+				"split_zones": "Two functional zones divided by a partial wall or change of furniture.", "perimeter_rooms": "A main room with smaller side bays or enclosed support spaces.",
+			}),
+			"world_density": q("How furnished and occupied should the room feel?", map[string]string{
+				"spacious": "Generous circulation and a restrained number of furnishings.", "furnished": "Complete practical furnishing with comfortable circulation.",
+				"busy": "Dense, active interior with many stations, props and people.",
+			}),
+			"world_population": q("How active should the interior feel?", map[string]string{
+				"empty": "No visible occupants.", "quiet": "A few occupants using the room calmly.",
+				"active": "Several occupants make the room feel in use.", "crowded": "Many occupants create a busy public interior.",
+			}),
+			"world_feature": q("Which architectural feature should shape the room?", map[string]string{
+				"window_wall": "A broad wall of windows provides directional daylight.", "skylights": "Ceiling openings and light wells brighten the center.",
+				"mezzanine": "A partial upper gallery overlooks the main room.", "feature_wall": "A distinctive material or display wall anchors one end.",
+			}),
+			"world_hazard": q("Which explicit operational state applies? Default normal.", map[string]string{
+				"normal": "Ordinary safe operation.", "after_hours": "Dim, quiet interior outside normal opening hours.",
+				"emergency": "Warning lights and disrupted activity indicate an emergency.", "renovation": "Some areas are screened off for renovation.",
+			}),
+			"world_landmark": q("Which focal interior element best fits the requested room?", map[string]string{
+				"teaching_wall": "Large board, screen or teaching wall.", "service_station": "Reception, nurses station or service counter.",
+				"communal_table": "Large shared work, dining or reading table.", "hearth": "Residential fireplace and lounge focal point.",
+				"display_piece": "Large exhibit, sculpture or experimental apparatus.",
+			}),
+		}
 	case "ocean_liner":
 		return map[string]jevloop.ChoiceQuestion{
 			"world_archetype": q("Which large passenger-vessel character best matches the request?", map[string]string{

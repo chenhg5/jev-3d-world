@@ -5,6 +5,7 @@ const profiles={
   ocean:{bpm:72,beats:3,scale:[0,2,4,7,9],progression:[0,5,3,4],pad:"sine",lead:"triangle",volume:.1},
   primeval:{bpm:64,beats:4,scale:[0,3,5,7,10],progression:[0,7,5,3],pad:"triangle",lead:"sine",volume:.095},
   medieval:{bpm:78,beats:3,scale:[0,2,3,5,7,8,10],progression:[0,5,7,3],pad:"triangle",lead:"triangle",volume:.095},
+  interior:{bpm:68,beats:4,scale:[0,2,4,7,11],progression:[0,4,5,3],pad:"sine",lead:"triangle",volume:.072},
 };
 
 function hash(text){
@@ -17,6 +18,7 @@ function profileName(spec={}){
   if(spec.scenePack==="ocean_liner")return "ocean";
   if(spec.scenePack==="prehistoric")return "primeval";
   if(spec.scenePack==="medieval_city")return "medieval";
+  if(spec.scenePack==="interior")return "interior";
   if(spec.environment==="city"||spec.lighting==="neon")return "urban";
   if(spec.environment==="ocean"||spec.environment==="coast")return "ocean";
   if(spec.environment==="forest"||spec.palette==="mystic"||spec.lighting==="night")return "mystic";

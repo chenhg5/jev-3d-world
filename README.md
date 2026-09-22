@@ -16,6 +16,10 @@ locally. No text-generating LLM is required.
 - A scene-family router for other large worlds. Ocean liners, prehistoric
   reserves and medieval fortified cities each have their own bounded Jev
   questions and spatial grammar instead of sharing a city template.
+- Procedural interiors for classrooms, hospital wards, offices, apartments,
+  restaurants, libraries, laboratories and galleries. Jev chooses the room,
+  floor plan, furnishing density, activity, architectural feature and focal
+  element; the browser builds a cutaway interior that can be explored.
 - English and Chinese prompts, with quantities from 0 to 20 per asset type.
 - Broad themes infer characteristic props; explicit inventories preserve named
   objects and counts. Model judgments can still make mistakes.
@@ -81,6 +85,8 @@ A large New York-inspired downtown with a tight street grid, dense blocks, a cen
 A Titanic-inspired grand ocean liner with four funnels, layered passenger decks and rows of lifeboats.
 A vast dinosaur reserve with a river valley, mixed dinosaur ecosystem, monumental park gate and distant mountains.
 A northern fantasy medieval capital inside stone walls beneath a high citadel.
+A bright modern classroom with a central aisle, student desks and a teaching wall.
+A calm contemporary hospital ward with patient beds and a nurses station.
 出去外面露营的场景
 中秋节，但是是白天
 ```
@@ -108,7 +114,9 @@ A northern fantasy medieval capital inside stone walls beneath a high citadel.
    functional districts; liners build a hull, layered decks,
    funnels and lifeboats; prehistoric worlds reserve visible animal habitats
    inside forest and terrain layers; medieval cities pack homes inside walls
-   beneath a citadel. Generated structures register footprints for Explore.
+   beneath a citadel. Interior plans build room shells, partitions, lighting,
+   occupants and room-specific furniture. Generated structures register
+   footprints for Explore.
    For a standard scene, it builds the models, normalizes their scale, packs the activity
    areas, routes paths around obstacles and builds the surrounding terrain.
    The moon has a fixed position above the scene.

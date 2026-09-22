@@ -241,9 +241,134 @@ function createMedievalCity(spec,random){
   return {group,landscape,layout,stats:group.userData.worldStats};
 }
 
+const interiorPalettes={
+  classroom:{floor:0xb5a37f,wall:0xe5e0d2,accent:0x477b72,furniture:0x8a6a45},
+  hospital_ward:{floor:0xb9c8c7,wall:0xe9efec,accent:0x57a0a1,furniture:0xd8e2df},
+  office:{floor:0x62686b,wall:0xd8d5ce,accent:0x4d7c96,furniture:0x6d6258},
+  apartment:{floor:0x9a7958,wall:0xe3d5c4,accent:0xa95f4b,furniture:0x6f5140},
+  restaurant:{floor:0x765b45,wall:0xc7a989,accent:0xb64f3f,furniture:0x5e3e2d},
+  library:{floor:0x72583f,wall:0xc7b596,accent:0x5d704f,furniture:0x59402d},
+  laboratory:{floor:0x9ba5a5,wall:0xd8dfdf,accent:0x4f91ae,furniture:0xb6c0c1},
+  gallery:{floor:0xc9c5bc,wall:0xeeeae1,accent:0xb26d45,furniture:0x77736e},
+};
+
+function interiorStation(kind,index,random,palette){
+  const group=new THREE.Group();let width=2.5,depth=1.4,height=2,type=kind+"_station";
+  const wood=standard(palette.furniture),accent=standard(palette.accent),pale=standard(0xe8e5dc),dark=standard(0x30373b);
+  if(kind==="hospital_ward"){
+    width=2.5;depth=1.25;height=1.45;type="hospital_bed";
+    group.add(box(2.25,.48,1.05,standard(0xe7eeee),0,.48,0),box(2.35,.65,.12,accent,-.02,0, -.52));
+    const pillow=box(.55,.18,.82,pale,-.68,.97,0);group.add(pillow);
+  }else if(kind==="library"){
+    width=2.7;depth=.72;height=3.25;type="bookshelf";group.add(box(width,height,depth,wood));
+    for(let y=.7;y<height;y+=.68)group.add(box(width*.92,.1,depth+.06,dark,0,y,0));
+    for(let x=-1.05;x<1.1;x+=.35)group.add(box(.22,.48,.08,standard([0x9b4f43,0x53728b,0x8a7848,0x54725c][Math.abs(Math.round(x*10)+index)%4]),x,.2,-depth/2-.05));
+  }else if(kind==="restaurant"){
+    width=3.1;depth=3.1;height=1.25;type="dining_set";
+    const top=cylinder(1.05,1.05,.16,wood,0,.78,0,18);group.add(top,cylinder(.18,.26,.78,dark));
+    for(const a of [0,Math.PI/2,Math.PI,Math.PI*1.5]){const chair=box(.62,.75,.62,accent,Math.cos(a)*1.25,0,Math.sin(a)*1.25);group.add(chair);}
+  }else if(kind==="apartment"){
+    if(index%2===0){width=2.8;depth=1.05;height=1.15;type="sofa";group.add(box(width,.55,depth,accent),box(width,.72,.25,accent,0,.5,.4));}
+    else {width=2.2;depth=1.25;height=.9;type="coffee_table";group.add(box(width,.16,depth,wood,0,.64,0),box(.16,.65,.16,dark,-.78,0,-.38),box(.16,.65,.16,dark,.78,0,.38));}
+  }else if(kind==="gallery"){
+    width=1.7;depth=1.7;height=2.8;type="exhibit";group.add(box(1.25,.72,1.25,pale));
+    const art=new THREE.Mesh(index%2?new THREE.TorusKnotGeometry(.5,.16,36,7):new THREE.IcosahedronGeometry(.65,1),accent);art.position.y=1.65;art.castShadow=true;group.add(art);
+  }else{
+    const lab=kind==="laboratory",office=kind==="office";
+    width=lab?3.2:2.5;depth=lab?1.2:1.35;height=lab?2.1:1.8;type=lab?"lab_bench":office?"workstation":"student_desk";
+    group.add(box(width,.16,depth,wood,0,.72,0),box(.14,.72,.14,dark,-width*.38,0,-depth*.32),box(.14,.72,.14,dark,width*.38,0,depth*.32));
+    if(office||lab){const screen=box(.82,.6,.08,dark,0,.88,-.2);group.add(screen);}
+    if(lab){for(const x of [-.85,.8]){const glass=cylinder(.16,.2,.65,standard(0x8ccbd0,{transparent:true,opacity:.72}),x,.9,0,12);group.add(glass);}}
+    else {group.add(box(.6,.72,.62,accent,0,0,depth*.72));}
+  }
+  group.userData.size={width,depth,height};return {group,width,depth,height,type};
+}
+
+function interiorLandmark(kind,palette){
+  const group=new THREE.Group(),accent=standard(palette.accent),wood=standard(palette.furniture),dark=standard(0x293237);
+  let width=7,depth=1.2,height=3.5,type=kind;
+  if(kind==="communal_table"){
+    width=7;depth=2.8;height=1.1;group.add(box(width,.22,depth,wood,0,.75,0));
+    for(const x of [-2.6,2.6])group.add(box(.25,.75,1.8,dark,x,0,0));
+  }else if(kind==="hearth"){
+    width=5;depth=1.4;height=4;group.add(box(width,height,depth,standard(0x806b5d)));
+    const opening=box(2.4,1.8,.18,dark,0,.15,-depth/2-.1);group.add(opening);
+    const glow=new THREE.PointLight(0xff7937,28,9);glow.position.set(0,1,-1);group.add(glow);
+  }else if(kind==="display_piece"){
+    width=4;depth=4;height=5;group.add(box(2,.8,2,standard(0xd8d3c7)));
+    const sculpture=new THREE.Mesh(new THREE.TorusKnotGeometry(1.15,.34,60,10),accent);sculpture.position.y=2.6;sculpture.castShadow=true;group.add(sculpture);
+  }else if(kind==="service_station"){
+    width=7;depth=2.4;height=1.45;group.add(box(width,1.15,depth,wood),box(width,.16,.55,accent,0,1.1,-depth/2));
+  }else{
+    type="teaching_wall";width=8;depth=.35;height=3.6;group.add(box(width,height,depth,standard(0xd8d6ca)),box(width*.88,height*.72,.08,dark,0,.42,depth/2+.05));
+  }
+  return {group,width,depth,height,type};
+}
+
+function createInterior(spec,random){
+  const plan=spec.world||{},kind=plan.archetype||"office",palette=interiorPalettes[kind]||interiorPalettes.office;
+  const dimensions={spacious:[32,24],furnished:[38,28],busy:[44,32]}[plan.density]||[38,28];
+  const width=dimensions[0]+Math.floor(random()*3)*2,depth=dimensions[1]+Math.floor(random()*3)*2,wallHeight=6.2;
+  const group=new THREE.Group();group.name="interior-scene-pack";
+  const groundGroup=new THREE.Group();groundGroup.name="interior-shell";group.add(groundGroup);
+  const floor=box(width,.22,depth,standard(palette.floor));floor.position.y=-.11;floor.receiveShadow=true;groundGroup.add(floor);
+  const items=[];
+  const addSolid=(model,type,category,x,z,w,d,h,index=0)=>{model.position.x=x;model.position.z=z;group.add(model);items.push(item(model,type,category,x,z,w,d,h,index));};
+  const wallMaterial=standard(palette.wall),back=box(width,wallHeight,.28,wallMaterial,0,0,-depth/2),left=box(.28,wallHeight,depth,wallMaterial,-width/2,0,0),right=box(.28,wallHeight,depth,wallMaterial,width/2,0,0);
+  for(const [index,[model,type,x,z,w,d]] of [[back,"back_wall",0,-depth/2,width,.28],[left,"side_wall",-width/2,0,.28,depth],[right,"side_wall",width/2,0,.28,depth]].entries()){
+    groundGroup.add(model);items.push(item(model,type,"architecture",x,z,w,d,wallHeight,index));
+  }
+  if(plan.feature==="window_wall"){
+    const glass=standard(0x8fc2cf,{transparent:true,opacity:.44,roughness:.18});
+    for(let x=-width*.38;x<=width*.38;x+=width*.19){const window=box(width*.15,2.7,.06,glass,x,2.2,-depth/2+.18);groundGroup.add(window);}
+  }else if(plan.feature==="skylights"){
+    for(const x of [-width*.2,width*.2]){const frame=box(width*.22,.12,depth*.3,standard(0xb5ced2),x,wallHeight,0);groundGroup.add(frame);}
+  }else if(plan.feature==="mezzanine"){
+    const deck=box(width*.55,.35,depth*.22,standard(palette.furniture),0,3.8,-depth*.34);addSolid(deck,"mezzanine","architecture",0,-depth*.34,width*.55,depth*.22,.35);
+  }else{
+    const feature=box(width*.68,wallHeight*.72,.18,standard(palette.accent),0,.55,-depth/2+.17);groundGroup.add(feature);
+  }
+
+  if(plan.topology==="split_zones"){
+    const divider=box(.24,3.5,depth*.52,wallMaterial,0,0,-depth*.02);addSolid(divider,"partition","architecture",0,-depth*.02,.24,depth*.52,3.5);
+  }else if(plan.topology==="perimeter_rooms"){
+    for(const side of [-1,1]){const partition=box(width*.22,3.5,.22,wallMaterial,side*width*.28,0,-depth*.18);addSolid(partition,"partition","architecture",side*width*.28,-depth*.18,width*.22,.22,3.5,side+1);}
+  }
+
+  const count={spacious:7,furnished:12,busy:18}[plan.density]||12;
+  const columns=plan.topology==="central_aisle"?2:plan.topology==="split_zones"?4:Math.max(3,Math.round(Math.sqrt(count*width/depth)));
+  for(let index=0;index<count;index++){
+    const station=interiorStation(kind,index,random,palette),col=index%columns,row=Math.floor(index/columns);
+    let x=(col-(columns-1)/2)*(width*.72/Math.max(1,columns-1)),z=-depth*.25+row*(depth*.52/Math.max(1,Math.ceil(count/columns)-1));
+    if(plan.topology==="central_aisle")x=(col?1:-1)*width*.22;
+    if(plan.topology==="open_plan"){x+=(random()-.5)*1.8;z+=(random()-.5)*1.4;}
+    addSolid(station.group,station.type,"decor",x,z,station.width,station.depth,station.height,index);
+  }
+  const landmark=interiorLandmark(plan.landmark||"communal_table",palette);
+  const landmarkZ=["teaching_wall","hearth"].includes(landmark.type)?-depth*.39:landmark.type==="display_piece"?0:depth*.28;
+  addSolid(landmark.group,landmark.type,"landmark",0,landmarkZ,landmark.width,landmark.depth,landmark.height);
+
+  const peopleCount={empty:0,quiet:3,active:7,crowded:12}[plan.population]||0;
+  for(let index=0;index<peopleCount;index++){
+    const person=new THREE.Group(),body=cylinder(.24,.3,1.15,standard(index%2?palette.accent:0x536779));person.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.25,10,8),standard([0x8d5524,0xc68642,0xe0ac69,0xf1c27d][index%4]));head.position.y=1.55;head.castShadow=true;person.add(head);
+    const x=(random()-.5)*width*.72,z=(random()-.5)*depth*.55;person.position.set(x,.12,z);group.add(person);items.push(item(person,"occupant","people",x,z,.65,.65,1.8,index));
+  }
+  const lightCount=plan.hazard==="after_hours"?3:6;
+  for(let index=0;index<lightCount;index++){
+    const light=new THREE.PointLight(plan.hazard==="emergency"?0xff4b35:0xfff0cf,plan.hazard==="after_hours"?18:34,18,2);
+    light.position.set((index%3-1)*width*.25,wallHeight-.35,(Math.floor(index/3)-.5)*depth*.42);group.add(light);
+  }
+  const heightAt=()=>.12,landscape=landscapeContract(groundGroup,heightAt,Math.max(width,depth));
+  const layout={items,landRadius:Math.min(width,depth)*.48,sceneExtent:Math.max(width,depth),largeWorld:true,avatarScale:.9,cameraTargetY:2.2,cameraProfile:"interior",worldFamily:"interior",roomBounds:{width,depth}};
+  group.userData.worldStats={family:"interior",room:kind,topology:plan.topology,width,depth,stations:count,occupants:peopleCount,feature:plan.feature};
+  return {group,landscape,layout,stats:group.userData.worldStats};
+}
+
 export function createLargeWorld(spec,random=Math.random){
   if(spec.scenePack==="ocean_liner")return createOceanLiner(spec,random);
   if(spec.scenePack==="prehistoric")return createPrehistoric(spec,random);
   if(spec.scenePack==="medieval_city")return createMedievalCity(spec,random);
+  if(spec.scenePack==="interior")return createInterior(spec,random);
   throw new Error("Unsupported large world family: "+spec.scenePack);
 }

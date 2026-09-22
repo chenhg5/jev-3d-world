@@ -110,11 +110,12 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		"scene_pack": {
 			Instructions: "Which available procedural scene family best represents the whole world requested in `request`? Choose a large scene family only when it is central to the request. Named story or film references are thematic cues, not requests for an exact reconstruction. A small explicit object composition remains standard.",
 			Criteria: map[string]string{
-				"standard":      "A normal finite scene, landscape, room, village, single street, town square, station or explicit object composition.",
+				"standard":      "A normal finite outdoor scene, landscape, village, single street, town square, station or explicit object composition that is not primarily an explorable room.",
 				"metropolis":    "A modern large city, downtown, GTA-like/open-world urban area, or city center with multiple districts, roads and a skyline.",
 				"ocean_liner":   "A giant passenger ship, Titanic-like ocean liner, cruise ship deck or maritime voyage where the vessel is the world.",
 				"prehistoric":   "A Jurassic-like dinosaur reserve, lost prehistoric valley, dinosaur jungle or research park across a large natural landscape.",
 				"medieval_city": "A large medieval, fantasy-feudal or Game-of-Thrones-like walled city, castle settlement or fortified capital.",
+				"interior":      "An indoor room or connected interior such as a classroom, hospital ward, office, home, restaurant, library, laboratory, museum or gallery.",
 			},
 		},
 		"scenery": {
@@ -153,7 +154,7 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 		return Spec{}, fmt.Errorf("invalid moon request %q", moonRequest)
 	}
 	scenePack := intent.Answers["scene_pack"].Choice
-	if scenePack != "standard" && scenePack != "metropolis" && scenePack != "ocean_liner" && scenePack != "prehistoric" && scenePack != "medieval_city" {
+	if scenePack != "standard" && scenePack != "metropolis" && scenePack != "ocean_liner" && scenePack != "prehistoric" && scenePack != "medieval_city" && scenePack != "interior" {
 		return Spec{}, fmt.Errorf("invalid scene pack %q", scenePack)
 	}
 	questions := globalQuestions()
@@ -269,6 +270,8 @@ func (c Composer) ComposeVariant(ctx context.Context, request string, variant ui
 			spec.Environment = "forest"
 		case "medieval_city":
 			spec.Environment = "meadow"
+		case "interior":
+			spec.Environment = "interior"
 		}
 	}
 	// Explicit exclusions and the selected time of day override thematic inference.
