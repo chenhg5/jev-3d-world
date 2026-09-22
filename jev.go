@@ -167,6 +167,7 @@ func (c JevClient) do(ctx context.Context, body []byte) (jevResponse, error) {
 		httpClient = &http.Client{Timeout: 12 * time.Second}
 	}
 	var lastStatus int
+	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 		if err != nil {
@@ -176,7 +177,17 @@ func (c JevClient) do(ctx context.Context, body []byte) (jevResponse, error) {
 		req.Header.Set("Content-Type", "application/json")
 		response, err := httpClient.Do(req)
 		if err != nil {
-			return jevResponse{}, fmt.Errorf("call Jev: %w", err)
+			lastErr = err
+			if ctx.Err() != nil {
+				return jevResponse{}, fmt.Errorf("call Jev: %w", ctx.Err())
+			}
+			if attempt < 2 {
+				if err := waitForRetry(ctx, attempt); err != nil {
+					return jevResponse{}, fmt.Errorf("call Jev: %w", err)
+				}
+				continue
+			}
+			return jevResponse{}, fmt.Errorf("call Jev after 3 attempts: %w", lastErr)
 		}
 		responseBody, readErr := io.ReadAll(io.LimitReader(response.Body, 2<<20))
 		response.Body.Close()
@@ -185,12 +196,13 @@ func (c JevClient) do(ctx context.Context, body []byte) (jevResponse, error) {
 		}
 		lastStatus = response.StatusCode
 		if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == 529 {
-			select {
-			case <-ctx.Done():
-				return jevResponse{}, ctx.Err()
-			case <-time.After(time.Duration(200*(1<<attempt)) * time.Millisecond):
+			if attempt < 2 {
+				if err := waitForRetry(ctx, attempt); err != nil {
+					return jevResponse{}, err
+				}
 				continue
 			}
+			break
 		}
 		if response.StatusCode < 200 || response.StatusCode >= 300 {
 			return jevResponse{}, fmt.Errorf(
@@ -204,6 +216,15 @@ func (c JevClient) do(ctx context.Context, body []byte) (jevResponse, error) {
 		return result, nil
 	}
 	return jevResponse{}, fmt.Errorf("Jev unavailable after retries (HTTP %d)", lastStatus)
+}
+
+func waitForRetry(ctx context.Context, attempt int) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(time.Duration(200*(1<<attempt)) * time.Millisecond):
+		return nil
+	}
 }
 
 func valueOr(value, fallback string) string {

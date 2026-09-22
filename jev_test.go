@@ -3,10 +3,19 @@ package jevloop
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
 
 func TestJevClientMapsClosedActionChoice(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -56,5 +65,32 @@ func TestJevClientRejectsChoiceOutsideCandidates(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected out-of-candidates error")
+	}
+}
+
+func TestJevClientRetriesTransientConnectionFailures(t *testing.T) {
+	attempts := 0
+	client := &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		attempts++
+		if attempts < 3 {
+			return nil, errors.New("remote error: tls: handshake failure")
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body: io.NopCloser(strings.NewReader(
+				`{"model":"jev","answers":{"mood":{"type":"choice","choice":"calm","confidence":0.9}},"usage":{}}`,
+			)),
+		}, nil
+	})}
+	result, err := (JevClient{APIKey: "secret", HTTP: client}).EvaluateChoices(context.Background(),
+		map[string]string{"request": "quiet scene"}, map[string]ChoiceQuestion{"mood": {
+			Instructions: "Choose the mood.", Criteria: map[string]string{"calm": "Calm.", "busy": "Busy."},
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attempts != 3 || result.Answers["mood"].Choice != "calm" {
+		t.Fatalf("expected recovery on third attempt, attempts=%d result=%#v", attempts, result)
 	}
 }

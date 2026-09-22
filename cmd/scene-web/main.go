@@ -83,11 +83,15 @@ func main() {
 		}
 		if err != nil {
 			status := http.StatusBadGateway
+			message := "Jev could not compose this scene"
 			if errors.Is(err, context.DeadlineExceeded) {
 				status = http.StatusGatewayTimeout
+				message = "Jev request timed out; please try again"
+			} else if strings.Contains(err.Error(), "call Jev") {
+				message = "Could not connect to Jev; please try again"
 			}
 			log.Printf("compose failed: %v", err)
-			writeError(w, status, "Jev could not compose this scene")
+			writeError(w, status, message)
 			return
 		}
 		writeJSON(w, http.StatusOK, composeResponse{
