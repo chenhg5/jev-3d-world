@@ -551,6 +551,7 @@ function appendScene(delta, promptText) {
 
 function setComposeMode(mode) {
   composeMode=mode;
+  if(mode==="append")promptInput.value="";
   document.querySelectorAll("[data-mode]").forEach(button => button.setAttribute("aria-pressed",String(button.dataset.mode===mode)));
   document.querySelector("#mode-hint").textContent=mode==="append"
     ? "Keep existing objects and edits. Describe only what to add."
