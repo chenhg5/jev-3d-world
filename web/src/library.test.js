@@ -9,6 +9,7 @@ import {terrainSampler,createLandscape,objectElevation,refreshPaths} from "./lan
 import {createMetropolis} from "./city.js";
 import {createLargeWorld} from "./worlds.js";
 import {findPlayerSpawn as findLargeWorldSpawn,collidesWithScene as collidesInLargeWorld} from "./explore.js";
+import {musicPlanForSpec} from "./music.js";
 
 const colors={fabric:0xd7b982,wood:0x6d4930,leaf:0x315f42,accent:0xffa84c,stone:0x737772};
 function rng(seed=42){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
@@ -56,6 +57,21 @@ test("large scene families expand semantic plans into distinct randomized worlds
     const signature=world=>world.layout.items.map(entry=>[entry.x,entry.z,entry.width,entry.depth,entry.model.rotation.y]).flat().join(",");
     assert.notEqual(signature(first),signature(second),`${spec.scenePack} should vary with the generation seed`);
     for(const world of [first,second])world.group.traverse(node=>{node.geometry?.dispose();node.material?.dispose();});
+  }
+});
+test("scene music is deterministic per variant and changes across world families",()=>{
+  const ocean=musicPlanForSpec({scenePack:"ocean_liner",variant:42,world:{archetype:"classic_liner"}});
+  const oceanAgain=musicPlanForSpec({scenePack:"ocean_liner",variant:42,world:{archetype:"classic_liner"}});
+  const medieval=musicPlanForSpec({scenePack:"medieval_city",variant:42,world:{archetype:"royal_capital"}});
+  assert.deepEqual(ocean,oceanAgain);
+  assert.equal(ocean.profile,"ocean");
+  assert.equal(ocean.beats,3);
+  assert.equal(medieval.profile,"medieval");
+  assert.notDeepEqual(ocean.melody,medieval.melody);
+  for(const plan of [ocean,medieval,musicPlanForSpec({environment:"forest",variant:7})]){
+    assert.ok(plan.bpm>=60&&plan.bpm<=100);
+    assert.ok(plan.volume>0&&plan.volume<.2);
+    assert.equal(plan.melody.length,plan.beats*4);
   }
 });
 test("every catalog asset builds nonempty finite geometry at its documented scale",()=>{

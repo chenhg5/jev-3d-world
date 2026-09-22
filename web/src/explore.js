@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import {createSceneMusic} from "./music.js";
 
 const solidGroups = new Set(["architecture", "vehicle", "water", "decor", "landmark", "terrain", "flora", "camp"]);
 const movementCodes = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight", "Space"]);
@@ -42,6 +43,7 @@ export function normalizeControlCode(event) {
     w: "KeyW", W: "KeyW", a: "KeyA", A: "KeyA", s: "KeyS", S: "KeyS", d: "KeyD", D: "KeyD",
     ArrowUp: "ArrowUp", ArrowDown: "ArrowDown", ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight",
     " ": "Space", Shift: "ShiftLeft", v: "KeyV", V: "KeyV",
+    m: "KeyM", M: "KeyM",
   })[event.key];
   return ({ArrowUp: "KeyW", ArrowDown: "KeyS", ArrowLeft: "KeyA", ArrowRight: "KeyD"})[code] || code;
 }
@@ -200,7 +202,12 @@ export function createExplorer({ canvas, camera, controls, scene, stage, hud, bu
   const avatar = createPlayerAvatar();
   scene.add(avatar);
   const viewButton = hud.querySelector("[data-view-toggle]");
+  const musicButton = hud.querySelector("[data-music-toggle]");
   const viewLabel = hud.querySelector("[data-view-label]");
+  const music=createSceneMusic({onStateChange:state=>{
+    if(musicButton)musicButton.textContent=(state.enabled?"Music on":"Music off")+" · M";
+    stage.dataset.music=state.active?(state.profile||"ambient"):"off";
+  }});
   let active = false;
   let view = "third";
   let yaw = 0;
@@ -291,6 +298,7 @@ export function createExplorer({ canvas, camera, controls, scene, stage, hud, bu
     gaitPhase = 0;
     grounded = true;
     active = true;
+    music.start(world.spec);
     controls.enabled = false;
     keys.clear();
     avatar.position.copy(player);
@@ -314,6 +322,7 @@ export function createExplorer({ canvas, camera, controls, scene, stage, hud, bu
     };
     stage.dataset.exploreCheckpoint = JSON.stringify(checkpoint);
     active = false;
+    music.end();
     keys.clear();
     avatar.visible = false;
     stage.classList.remove("exploring");
@@ -340,6 +349,10 @@ export function createExplorer({ canvas, camera, controls, scene, stage, hud, bu
   });
   hud.querySelector("[data-explore-exit]").addEventListener("click", end);
   viewButton?.addEventListener("click", toggleView);
+  musicButton?.addEventListener("click",()=>{
+    const enabled=music.toggle();
+    onStatus(enabled?"Scene music enabled":"Scene music muted");
+  });
 
   document.addEventListener("pointerlockchange", () => {
     if (document.pointerLockElement === canvas) {
@@ -370,6 +383,11 @@ export function createExplorer({ canvas, camera, controls, scene, stage, hud, bu
     if (code === "KeyV" && !event.repeat) {
       event.preventDefault();
       toggleView();
+    }
+    if(code==="KeyM"&&!event.repeat){
+      event.preventDefault();
+      const enabled=music.toggle();
+      onStatus(enabled?"Scene music enabled":"Scene music muted");
     }
     if (code === "Space" && grounded) {
       grounded = false;
@@ -446,6 +464,7 @@ export function createExplorer({ canvas, camera, controls, scene, stage, hud, bu
   }
 
   function reset() {
+    music.end();
     checkpoint = null;
     delete stage.dataset.exploreCheckpoint;
   }

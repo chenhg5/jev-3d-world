@@ -31,6 +31,8 @@ locally. No text-generating LLM is required.
   Daytime scenes do not infer a moon from a festival alone.
 - Landscape/Overview camera controls, orbit, pan and zoom, searchable asset previews, example prompts and
   per-request timing and token usage.
+- Procedural scene music begins in Explore mode. Each scene family and variant
+  gets a deterministic ambient melody without downloading audio assets.
 - A fresh variation seed for each composition.
 
 ## Requirements
@@ -149,6 +151,9 @@ exploration starts in third person. Third-person and overview modes show an
 explorer with animated walking, running and jumping poses. Jev also chooses the
 explorer's jacket, trousers, accessory and accent color to fit each newly
 composed scene; local and legacy scenes get a stable palette-based fallback.
+Explore also starts low-volume procedural background music derived from the
+scene family and variation. Press **M** or use the HUD button to mute or resume
+it. Music stops when Explore ends.
 Press **Esc** to release the mouse and return to scene editing. Re-entering
 Explore in the same scene resumes the last position, direction and camera view;
 composing a new scene starts from a fresh safe spawn. The player follows the generated
@@ -183,8 +188,9 @@ npm --prefix web run build
 
 Tests use local fixtures and mock HTTP servers; they do not require an API key.
 Frontend tests cover model geometry, scale, activity layout, path obstruction,
-terrain, marine placement, sky colors, moon position and all hierarchical world
-generators. Go tests cover the client, routing, batching, counts and scene constraints.
+terrain, marine placement, sky colors, moon position, procedural music plans
+and all hierarchical world generators. Go tests cover the client, routing,
+batching, counts and scene constraints.
 
 ## Project layout
 
